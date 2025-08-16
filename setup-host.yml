@@ -1,0 +1,51 @@
+- name: Setup host
+  hosts: mpd
+  tasks:
+    - name: Install required packages
+      become: true
+      ansible.builtin.package:
+        name:
+          - mpd
+          - mpc
+          - alsa-utils
+          - ladspa-sdk
+          - libsdl2-dev
+          - libfftw3-dev
+          - libiniparser-dev
+          - libasound2-dev
+          - libtool
+          - wmctrl
+          - x11-utils
+          - feh
+          - matchbox-window-manager
+          - xbindkeys
+          - xosd-bin
+          - ir-keytable
+          - python3-pip
+          - python3-requests
+          - python3-evdev
+          - bind9-host
+          - vim
+          - command-not-found
+        state: present
+
+    - name: Remove unwanted packages
+      become: true
+      ansible.builtin.package:
+        name:
+          - modemmanager
+        state: absent
+
+    - name: Mask system MPD socket
+      ansible.builtin.systemd:
+        name: mpd.service
+        enabled: false
+        masked: true
+        state: stopped
+
+    - name: Add snd-aloop to modules.load.d
+      become: true
+      ansible.builtin.copy:
+        src: files/snd-aloop.conf
+        dest: /etc/modules-load.d/snd-aloop.conf
+        mode: "0644"

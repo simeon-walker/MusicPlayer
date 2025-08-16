@@ -1,0 +1,98 @@
+- name: Setup visualizer
+  hosts: mpd
+  tasks:
+
+    - name: Make config directory
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.config/mpd"
+        state: directory
+        mode: "0755"
+
+    - name: Copy MPD configuration
+      ansible.builtin.copy:
+        src: files/mpd.conf
+        dest: "{{ ansible_env.HOME }}/.config/mpd/mpd.conf"
+        mode: "0644"
+
+    - name: Make .config/systemd/user directory
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.config/systemd/user"
+        state: directory
+        mode: "0755"
+
+    - name: Copy MPD systemd service
+      ansible.builtin.copy:
+        src: files/mpd.service
+        dest: "{{ ansible_env.HOME }}/.config/systemd/user/mpd.service"
+        mode: "0644"
+
+    - name: Copy asoundrc configuration
+      ansible.builtin.copy:
+        src: files/asoundrc
+        dest: "{{ ansible_env.HOME }}/.asoundrc"
+        mode: "0644"
+
+    - name: Copy IR remote udev rules
+      become: true
+      ansible.builtin.copy:
+        src: files/99-ir-remote.rules
+        dest: "/etc/udev/rules.d/99-remote.rules"
+        mode: "0644"
+
+    - name: Copy jivelite keytable to rc_keymaps
+      become: true
+      ansible.builtin.copy:
+        src: files/jivelite.keytable
+        dest: "/etc/rc_keymaps/jivelite.keytable"
+        mode: "0644"
+
+    - name: Make Cava config directory
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.config/cava"
+        state: directory
+        mode: "0755"
+
+    - name: Copy CAVA configuration
+      ansible.builtin.copy:
+        src: files/cava.conf
+        dest: "{{ ansible_env.HOME }}/.config/cava/config"
+        mode: "0644"
+
+    - name: Copy mpd watcher script
+      ansible.builtin.copy:
+        src: files/mpd_watch.py
+        dest: "{{ ansible_env.HOME }}/mpd_watch.py"
+        mode: "0755"
+
+    - name: Copy xbindkeys configuration
+      ansible.builtin.copy:
+        src: files/xbindkeysrc
+        dest: "{{ ansible_env.HOME }}/.xbindkeysrc"
+        mode: "0644"
+
+    - name: Copy xinitrc for kiosk
+      ansible.builtin.copy:
+        src: files/xinitrc
+        dest: "{{ ansible_env.HOME }}/.xinitrc"
+        mode: "0644"
+
+    - name: Copy kiosk service file
+      become: true
+      ansible.builtin.copy:
+        src: files/kiosk.service
+        dest: "/etc/systemd/system/kiosk.service"
+        mode: "0644"
+
+    - name: Disable systemd service getty@tty1
+      become: true
+      ansible.builtin.systemd:
+        name: "getty@tty1"
+        enabled: false
+        state: stopped
+
+    - name: Enable and start kiosk service
+      become: true
+      ansible.builtin.systemd:
+        name: kiosk.service
+        enabled: true
+        state: started

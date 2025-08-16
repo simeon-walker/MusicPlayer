@@ -1,0 +1,5 @@
+# ===== Loopback capture device for CAVA =====
+pcm.cava_capture {
+    type plug
+    slave.pcm "hw:Loopback,1,0"  # capture side of loopback
+}

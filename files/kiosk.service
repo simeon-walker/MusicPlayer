@@ -1,0 +1,25 @@
+[Unit]
+Description=MPD Visualizer (kiosk)
+After=network.target sound.target
+Conflicts=getty@tty1.service
+
+[Service]
+User=sim
+PAMName=login
+WorkingDirectory=/home/sim
+Environment=HOME=/home/sim
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/sim/.Xauthority
+
+StandardInput=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+
+ExecStart=/usr/bin/xinit /home/sim/.xinitrc -- :0 vt1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
