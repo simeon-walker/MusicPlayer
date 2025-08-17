@@ -1,3 +1,4 @@
 .vscode/settings.json
+.ansible
 hosts.ini
 ansible.cfg
