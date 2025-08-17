@@ -20,13 +20,18 @@
           - matchbox-window-manager
           - xbindkeys
           - xosd-bin
+          - xfonts-100dpi
+          - xfonts-75dpi
+          - xfonts-base
           - ir-keytable
           - python3-pip
           - python3-requests
           - python3-evdev
+          - python3-systemd
           - bind9-host
           - vim
           - command-not-found
+          - jq
         state: present
 
     - name: Remove unwanted packages
@@ -36,12 +41,6 @@
           - modemmanager
         state: absent
 
-    - name: Mask system MPD socket
-      ansible.builtin.systemd:
-        name: mpd.service
-        enabled: false
-        masked: true
-        state: stopped
 
     - name: Add snd-aloop to modules.load.d
       become: true
@@ -49,3 +48,19 @@
         src: files/snd-aloop.conf
         dest: /etc/modules-load.d/snd-aloop.conf
         mode: "0644"
+
+    - name: Set dtparam=audio=off
+      become: true
+      ansible.builtin.lineinfile:
+        dest: /boot/firmware/config.txt
+        regexp: '^dtparam=audio='
+        line: 'dtparam=audio=off'
+        state: present
+
+    - name: Enable gpio-ir overlay
+      become: true
+      ansible.builtin.lineinfile:
+        dest: /boot/firmware/config.txt
+        regexp: '^dtoverlay=gpio-ir'
+        line: 'dtoverlay=gpio-ir,gpio_pin=17'
+        state: present
