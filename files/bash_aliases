@@ -1,0 +1,2 @@
+alias jmpd='journalctl -t mpd_watch -o json | jq -r "[.MESSAGE, .STATE, .MPD_TRACK, .MPD_ARTIST] | @tsv"'
+alias jmpd-f='journalctl -t mpd_watch -o json -f | jq -r "[.MESSAGE, .STATE, .MPD_TRACK, .MPD_ARTIST] | @tsv"'

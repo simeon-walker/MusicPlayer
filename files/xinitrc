@@ -1,16 +1,15 @@
 #!/bin/bash
-exec >"$HOME/kiosk.log" 2>&1
 set -x  # optional, shows commands as they run
 
 # Disable screensaver / power management
 xset s off
 xset -dpms
 xset s noblank
-xbindkeys
+xbindkeys &
 unclutter -idle 1 &
 
 # Start MPD watcher script
-python3 "$HOME/mpd_watch.py" 2>&1 &
+systemd-cat -t mpd_watch python3 "$HOME/mpd_watch.py" &
 
 # Start minimal WM
 matchbox-window-manager -use_titlebar no

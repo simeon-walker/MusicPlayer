@@ -1,6 +1,11 @@
 - name: Setup visualizer
   hosts: mpd
   tasks:
+    - name: Copy bash aliases
+      ansible.builtin.copy:
+        src: files/bash_aliases
+        dest: "{{ ansible_env.HOME }}/.bash_aliases"
+        mode: "0644"
 
     - name: Make config directory
       ansible.builtin.file:
@@ -30,6 +35,13 @@
       ansible.builtin.copy:
         src: files/asoundrc
         dest: "{{ ansible_env.HOME }}/.asoundrc"
+        mode: "0644"
+
+    - name: Setup alsa module options
+      become: true
+      ansible.builtin.copy:
+        src: files/alsa-base.conf
+        dest: /etc/modprobe.d/alsa-base.conf
         mode: "0644"
 
     - name: Copy IR remote udev rules
