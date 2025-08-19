@@ -1,1 +1,0 @@
-SUBSYSTEM=="input", ATTRS{name}=="gpio_ir_recv", SYMLINK+="input/ir-remote"
