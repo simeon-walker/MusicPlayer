@@ -44,19 +44,19 @@
         dest: /etc/modprobe.d/alsa-base.conf
         mode: "0644"
 
-    - name: Copy IR remote udev rules
+    - name: Copy triggerhappy configuration
       become: true
       ansible.builtin.copy:
-        src: files/99-ir-remote.rules
-        dest: "/etc/udev/rules.d/99-remote.rules"
+        src: files/thd-mpc.conf
+        dest: /etc/triggerhappy/triggers.d/mpc.conf
         mode: "0644"
 
-    - name: Copy jivelite keytable to rc_keymaps
-      become: true
-      ansible.builtin.copy:
-        src: files/jivelite.keytable
-        dest: "/etc/rc_keymaps/jivelite.keytable"
-        mode: "0644"
+    # - name: Copy IR remote udev rules
+    #   become: true
+    #   ansible.builtin.copy:
+    #     src: files/99-ir-remote.rules
+    #     dest: "/etc/udev/rules.d/99-remote.rules"
+    #     mode: "0644"
 
     - name: Make Cava config directory
       ansible.builtin.file:
