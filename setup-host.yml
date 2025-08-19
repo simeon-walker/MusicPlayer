@@ -9,21 +9,22 @@
           - mpc
           - alsa-utils
           - ladspa-sdk
-          - libsdl2-dev
           - libfftw3-dev
           - libiniparser-dev
           - libasound2-dev
+          - libsndfile1-dev
           - libtool
           - wmctrl
           - x11-utils
           - feh
           - matchbox-window-manager
+          - rxvt-unicode
+          - cava
           - xbindkeys
           - xosd-bin
           - xfonts-100dpi
           - xfonts-75dpi
           - xfonts-base
-          - ir-keytable
           - python3-pip
           - python3-requests
           - python3-evdev
@@ -57,10 +58,18 @@
         line: 'dtparam=audio=off'
         state: present
 
-    - name: Enable gpio-ir overlay
+    - name: Enable gpio-shutdown overlay
       become: true
       ansible.builtin.lineinfile:
         dest: /boot/firmware/config.txt
-        regexp: '^dtoverlay=gpio-ir'
-        line: 'dtoverlay=gpio-ir,gpio_pin=17'
+        regexp: '^dtoverlay=gpio-shutdown'
+        line: 'dtoverlay=gpio-shutdown,gpio_pin=17,active_low=1,gpio_pull=up'
+        state: present
+
+    - name: Enable gpio-poweroff overlay
+      become: true
+      ansible.builtin.lineinfile:
+        dest: /boot/firmware/config.txt
+        regexp: '^dtoverlay=gpio-poweroff'
+        line: 'dtoverlay=gpio-poweroff,gpio_pin=18'
         state: present
