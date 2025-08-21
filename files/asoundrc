@@ -1,5 +1,31 @@
-# ===== Loopback capture device for CAVA =====
+# Loopback capture device for Cava
+# written to by MPD
 pcm.cava_capture {
     type plug
     slave.pcm "hw:Loopback,1,0"  # capture side of loopback
+}
+
+# https://github.com/bmc0/dsp
+pcm.dsp {
+	type plug
+	slave {
+		format FLOAT
+		rate unchanged
+		# channels unchanged
+		pcm {
+			type ladspa
+			path "/usr/lib/ladspa"
+			playback_plugins [{
+				label "ladspa_dsp"
+			}]
+			slave.pcm {
+				type plug
+				slave {
+					pcm "hw:CARD=HDDAC1"
+					rate unchanged
+					channels unchanged
+				}
+			}
+		}
+	}
 }

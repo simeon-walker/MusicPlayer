@@ -1,0 +1,6 @@
+# https://github.com/bmc0/dsp
+# Use scripts/rew_to_dsp.sh
+input_channels=2
+output_channels=2
+LC_NUMERIC=C
+effects_chain=gain -3 highshelf 6995 0.226 -7.30 eq 45.55 3.951 -3.90 eq 51.60 7.027 -6.50 eq 55.20 11.916 -9.50 eq 74.70 37.186 -1.40 eq 82.00 12.713 -10.70 eq 98.30 22.661 -4.70 eq 107.5 7.353 -6.50 eq 212.0 7.336 4.30 eq 248.0 7.465 5.00 eq 288.0 7.405 5.00 eq 328.0 1.626 -7.40 eq 342.0 7.428 5.00 eq 367.0 3.933 4.90 eq 489.0 4.706 -2.40 eq 678.0 7.739 -1.10
