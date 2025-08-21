@@ -44,6 +44,20 @@
         dest: /etc/modprobe.d/alsa-base.conf
         mode: "0644"
 
+    - name: Ensure /etc/ladspa_dsp directory exists
+      become: true
+      ansible.builtin.file:
+        path: /etc/ladspa_dsp
+        state: directory
+        mode: "0755"
+
+    - name: Copy ladspa_dsp configuration
+      become: true
+      ansible.builtin.copy:
+        src: files/ladspa_dsp-config
+        dest: /etc/ladspa_dsp/config
+        mode: "0644"
+
     - name: Copy triggerhappy configuration
       become: true
       ansible.builtin.copy:
@@ -51,12 +65,12 @@
         dest: /etc/triggerhappy/triggers.d/mpc.conf
         mode: "0644"
 
-    # - name: Copy IR remote udev rules
-    #   become: true
-    #   ansible.builtin.copy:
-    #     src: files/99-ir-remote.rules
-    #     dest: "/etc/udev/rules.d/99-remote.rules"
-    #     mode: "0644"
+    - name: Enable systemd-logind poweroff via suspend key
+      become: true
+      ansible.builtin.lineinfile:
+        dest: /etc/systemd/logind.conf
+        regexp: '^HandleSuspendKey='
+        line: 'HandleSuspendKey=poweroff'
 
     - name: Make Cava config directory
       ansible.builtin.file:
@@ -108,3 +122,13 @@
         name: kiosk.service
         enabled: true
         state: started
+
+    - name: Add fstab entry for /mnt/music
+      become: true
+      ansible.posix.mount:
+        path: /mnt/music
+        src: LABLEL=Music
+        fstype: ext4
+        opts: defaults,noatime
+        passno: 2
+        state: present
