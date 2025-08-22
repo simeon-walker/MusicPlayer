@@ -127,8 +127,8 @@
       become: true
       ansible.posix.mount:
         path: /mnt/music
-        src: LABLEL=Music
+        src: LABEL=music
         fstype: ext4
-        opts: defaults,noatime
+        opts: defaults,noatime,nofail
         passno: 2
         state: present
