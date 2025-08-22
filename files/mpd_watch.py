@@ -56,7 +56,7 @@ def osd_message(
     text, font="DejaVu Sans-20", colour="#20c4bf", delay=5, x=350, y=0, width=100
 ):
     try:
-        log_info( "Displaying OSD message: " + text, TEXT=text, X=x, Y=y, WIDTH=width) # fmt: skip
+        log_info( "OSD message: " + text, TEXT=text, X=x, Y=y, WIDTH=width) # fmt: skip
         p = subprocess.Popen(
             [
                 "dzen2", "-ta", "c", "-fg", colour,
@@ -131,17 +131,35 @@ def main():
                 match state:
                     case "play":
                         osd_message(
-                            "▶ Play", delay=2, x=340, y=100, width=120, colour="white"
+                            "▶",
+                            delay=2,
+                            x=370,
+                            y=100,
+                            width=60,
+                            colour="white",
+                            font="Noto Sans Symbols 2-40",
                         )
 
                     case "pause":
                         osd_message(
-                            "|| Pause", delay=2, x=340, y=100, width=120, colour="white"
+                            "⏸",
+                            delay=2,
+                            x=370,
+                            y=100,
+                            width=60,
+                            colour="white",
+                            font="Noto Sans Symbols 2-40",
                         )
 
                     case "stop":
                         osd_message(
-                            "◼ Stop", delay=2, x=340, y=100, width=120, colour="white"
+                            "◼",
+                            delay=2,
+                            x=370,
+                            y=100,
+                            width=60,
+                            colour="white",
+                            font="Noto Sans Symbols 2-40",
                         )
 
                 last_state = state
@@ -158,7 +176,7 @@ def main():
                     log_error("Reconnect failed", ERROR=e2)
                     time.sleep(2)
 
-        time.sleep(1)
+        time.sleep(0.5)
 
 
 if __name__ == "__main__":
