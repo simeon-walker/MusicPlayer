@@ -7,22 +7,7 @@ import textwrap
 from mpd import MPDClient
 from systemd.journal import JournalHandler
 
-MUSIC_DIR = os.path.expanduser("~/Music")
-DEFAULT_COVER = "/usr/share/pixmaps/debian-logo.png"  # fallback image
-BLACK_IMAGE = "/home/sim/black.jpg"  # pure black 7" screen-sized jpg
-CAVA_CMD = [
-    "rxvt",
-    "+sb",
-    "-bg",
-    "black",
-    "-fg",
-    "white",
-    "-e",
-    "cava",
-    "-p",
-    os.path.expanduser("~/.config/cava/config"),
-]
-FEH_CMD = ["feh", "-F", "-Z", "--image-bg", "black"]
+CAVA_CMD = ["rxvt", "+sb", "-bg", "black", "-fg", "white", "-e", "cava", "-p", os.path.expanduser("~/.config/cava/config")] # fmt: skip
 
 # Configure logger
 logger = logging.getLogger("mpd_watch")
@@ -67,35 +52,16 @@ def start_cava():
         log_info("CAVA already running")
 
 
-# def start_feh(cover_path: str):
-#     # 1) Put up black, 2) kill any feh, 3) start feh with cover
-#     kill_prog("cava")
-#     show_black()
-#     kill_prog("feh")
-#     time.sleep(0.05)
-#     subprocess.Popen(FEH_CMD + [cover_path])
-#     log_info("Started feh", COVER=cover_path)
-
-
-# def get_cover_path(song):
-#     if not song:
-#         return DEFAULT_COVER
-#     file_path = os.path.join(MUSIC_DIR, song.get("file", ""))
-#     album_dir = os.path.dirname(file_path)
-#     cover_path = os.path.join(album_dir, "cover.jpg")
-#     if not os.path.isfile(cover_path):
-#         return DEFAULT_COVER
-#     return cover_path
-
-
-def osd_message(text, delay=5, x=350, y=0, width=100):
+def osd_message(
+    text, font="DejaVu Sans-20", colour="#20c4bf", delay=5, x=350, y=0, width=100
+):
     try:
         log_info( "Displaying OSD message: " + text, TEXT=text, X=x, Y=y, WIDTH=width) # fmt: skip
         p = subprocess.Popen(
             [
-                "dzen2", "-ta", "c", 
+                "dzen2", "-ta", "c", "-fg", colour,
                 "-x", str(x), "-y", str(y),  "-w", str(width),
-                "-fn", "DejaVu Sans-20", "-p", str(delay)
+                "-fn", font , "-p", str(delay)
             ],
             stdin=subprocess.PIPE,
             text=True
@@ -144,7 +110,14 @@ def main():
 
                 # Second line: Album (only if present)
                 if album:
-                    osd_message(album, delay=4, x=0, y=30, width=800)
+                    osd_message(
+                        album,
+                        delay=4,
+                        x=0,
+                        y=30,
+                        width=800,
+                        font="DejaVu Sans-18:style=Oblique",
+                    )
 
                 last_title = title
 
@@ -157,16 +130,19 @@ def main():
                 )
                 match state:
                     case "play":
-                        osd_message("▶ Play", delay=2, x=340, y=100, width=120)
+                        osd_message(
+                            "▶ Play", delay=2, x=340, y=100, width=120, colour="white"
+                        )
 
                     case "pause":
-                        osd_message("|| Pause", delay=2, x=340, y=100, width=120)
+                        osd_message(
+                            "|| Pause", delay=2, x=340, y=100, width=120, colour="white"
+                        )
 
                     case "stop":
-                        osd_message("◼ Stop", delay=2, x=340, y=100, width=120)
-
-                    # case _:
-                    # kill_prog("cava")
+                        osd_message(
+                            "◼ Stop", delay=2, x=340, y=100, width=120, colour="white"
+                        )
 
                 last_state = state
 
