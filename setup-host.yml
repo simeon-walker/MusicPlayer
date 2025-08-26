@@ -73,3 +73,20 @@
         regexp: '^dtoverlay=gpio-poweroff'
         line: 'dtoverlay=gpio-poweroff,gpio_pin=18'
         state: present
+
+    - name: Mask man-db timer
+      become: true
+      ansible.builtin.systemd:
+        name: man-db.timer
+        masked: true
+        state: stopped
+
+    - name: Mask apt-daily timers
+      become: true
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        masked: true
+        state: stopped
+      loop:
+        - apt-daily.timer
+        - apt-daily-upgrade.timer
