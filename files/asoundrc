@@ -21,7 +21,7 @@ pcm.dsp {
 			slave.pcm {
 				type plug
 				slave {
-					pcm "hw:CARD=HDDAC1"
+					pcm "hw:0,0"
 					rate unchanged
 					channels unchanged
 				}
