@@ -77,10 +77,21 @@ def osd_message(
 
 # --- MAIN LOOP ---
 def main():
+
     client = MPDClient()
     client.timeout = 10
     client.idletimeout = None
-    client.connect("localhost", 6600)
+
+    # Try to connect, retry on failure
+    while True:
+        try:
+            client.connect("localhost", 6600)
+            log_info("Connected to MPD")
+            break
+        except Exception as e:
+            log_error(f"Failed to connect to MPD: {e}, retrying in 5s")
+            time.sleep(5)
+
     start_cava()
 
     last_state = None
