@@ -7,11 +7,17 @@
         dest: "{{ ansible_env.HOME }}/.bash_aliases"
         mode: "0644"
 
-    - name: Make config directory
+    - name: Ensure directories exist in ~/.config
+      become: false
       ansible.builtin.file:
-        path: "{{ ansible_env.HOME }}/.config/mpd"
+        path: "{{ ansible_env.HOME }}/.config/{{ item }}"
         state: directory
         mode: "0755"
+      loop:
+        - cava
+        - mpd
+        - ladspa_dsp
+        - systemd/user
 
     - name: Copy MPD configuration
       ansible.builtin.copy:
@@ -19,11 +25,18 @@
         dest: "{{ ansible_env.HOME }}/.config/mpd/mpd.conf"
         mode: "0644"
 
-    - name: Make .config/systemd/user directory
-      ansible.builtin.file:
-        path: "{{ ansible_env.HOME }}/.config/systemd/user"
-        state: directory
-        mode: "0755"
+    - name: Copy Cava configuration
+      ansible.builtin.copy:
+        src: files/cava.conf
+        dest: "{{ ansible_env.HOME }}/.config/cava/config"
+        mode: "0644"
+
+    - name: Copy ladspa_dsp configuration
+      become: true
+      ansible.builtin.copy:
+        src: files/ladspa_dsp-config
+        dest: "{{ ansible_env.HOME }}/.config/ladspa_dsp/config"
+        mode: "0644"
 
     - name: Copy MPD systemd service
       ansible.builtin.copy:
@@ -44,20 +57,6 @@
         dest: /etc/modprobe.d/alsa-base.conf
         mode: "0644"
 
-    - name: Ensure /etc/ladspa_dsp directory exists
-      become: true
-      ansible.builtin.file:
-        path: /etc/ladspa_dsp
-        state: directory
-        mode: "0755"
-
-    - name: Copy ladspa_dsp configuration
-      become: true
-      ansible.builtin.copy:
-        src: files/ladspa_dsp-config
-        dest: /etc/ladspa_dsp/config
-        mode: "0644"
-
     - name: Copy triggerhappy configuration
       become: true
       ansible.builtin.copy:
@@ -71,18 +70,6 @@
         dest: /etc/systemd/logind.conf
         regexp: '^HandleSuspendKey='
         line: 'HandleSuspendKey=poweroff'
-
-    - name: Make Cava config directory
-      ansible.builtin.file:
-        path: "{{ ansible_env.HOME }}/.config/cava"
-        state: directory
-        mode: "0755"
-
-    - name: Copy CAVA configuration
-      ansible.builtin.copy:
-        src: files/cava.conf
-        dest: "{{ ansible_env.HOME }}/.config/cava/config"
-        mode: "0644"
 
     - name: Copy mpd watcher script
       ansible.builtin.copy:
