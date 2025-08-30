@@ -11,6 +11,18 @@
 		"ghcr.io/devcontainers-extra/features/ansible:2": {
 			"version": "latest",
 			"injections": "hcloud"
+		},
+		"ghcr.io/devcontainers/features/go:1": {
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers/features/apt-packages:1": {
+			"packages": [
+				"vim",
+				"command-not-found",
+				"file",
+				"binutils-aarch64-linux-gnu",
+				"binutils-arm-linux-gnueabihf"
+			]
 		}
 	},
 

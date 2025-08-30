@@ -2,3 +2,5 @@
 .ansible
 hosts.ini
 ansible.cfg
+
+/mpd-controller*
