@@ -8,8 +8,8 @@ xset s noblank
 xbindkeys &
 unclutter -idle 1 &
 
-# Start MPD watcher script
-systemd-cat -t mpd_watch python3 "$HOME/mpd_watch.py" &
+# Start MPD controller
+systemd-cat -t mpd-controller $HOME/mpd-controller-arm64
 
 # Start minimal WM
 matchbox-window-manager -use_titlebar no

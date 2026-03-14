@@ -10,6 +10,7 @@ import (
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/fhs/gompd/v2/mpd"
+	"github.com/joho/godotenv"
 )
 
 // Define event types for our dispatcher
@@ -154,12 +155,31 @@ func startStatusPublisher(mpdAddr string, mpdClient **mpd.Client, mqttClient mqt
 }
 
 func main() {
+	// Load .env file if it exists
+	loadDotEnv()
+
+	// Process environment variables with defaults
+	mpdServerEnv, found := os.LookupEnv("MPD_SERVER")
+	if !found {
+		mpdServerEnv = "localhost:6600"
+	}
+	mqttServerEnv, found := os.LookupEnv("MQTT_SERVER")
+	if !found {
+		mqttServerEnv = "tcp://localhost:1883"
+	}
+	mqttUserEnv, _ := os.LookupEnv("MQTT_USER")
+	mqttPassEnv, _ := os.LookupEnv("MQTT_PASS")
+	inputDeviceEnv, found := os.LookupEnv("INPUT_DEVICE")
+	if !found {
+		inputDeviceEnv = "/dev/input/eventX"
+	}
+
 	// ---- Command-line flags ----
-	mpdServer := flag.String("mpd", "localhost:6600", "MPD server address (host:port)")
-	mqttServer := flag.String("mqtt-server", "tcp://localhost:1883", "MQTT server URI")
-	mqttUser := flag.String("mqtt-user", "", "MQTT username (optional)")
-	mqttPass := flag.String("mqtt-pass", "", "MQTT password (optional)")
-	inputDevice := flag.String("input", "/dev/input/eventX", "Input device path (FLIRC)")
+	mpdServer := flag.String("mpd", mpdServerEnv, "MPD server address (host:port)")
+	mqttServer := flag.String("mqtt-server", mqttServerEnv, "MQTT server URI")
+	mqttUser := flag.String("mqtt-user", mqttUserEnv, "MQTT username")
+	mqttPass := flag.String("mqtt-pass", mqttPassEnv, "MQTT password")
+	inputDevice := flag.String("input", inputDeviceEnv, "Input device path (FLIRC)")
 	flag.Parse()
 
 	events := make(chan ControlEvent, 10)
@@ -216,4 +236,17 @@ func main() {
 
 	// Run dispatcher (blocks main thread)
 	eventDispatcher(safeClient, events)
+}
+
+func loadDotEnv() {
+	// Attempt to load .env file if it exists
+	if _, err := os.Stat(".env"); err == nil {
+		logger.Info("Loading .env file")
+		err = godotenv.Load()
+		if err != nil {
+			logger.Error("Error loading .env file", slog.Any("err", err))
+		}
+	} else {
+		logger.Info(".env file not found, skipping")
+	}
 }

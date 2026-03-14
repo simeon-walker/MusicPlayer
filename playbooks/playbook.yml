@@ -71,10 +71,10 @@
         regexp: '^HandleSuspendKey='
         line: 'HandleSuspendKey=poweroff'
 
-    - name: Copy mpd watcher script
+    - name: Copy mpd controller program
       ansible.builtin.copy:
-        src: files/mpd_watch.py
-        dest: "{{ ansible_env.HOME }}/mpd_watch.py"
+        src: files/mpd-controller-arm64
+        dest: "{{ ansible_env.HOME }}/mpd-controller-arm64"
         mode: "0755"
 
     - name: Copy xbindkeys configuration
