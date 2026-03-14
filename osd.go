@@ -20,12 +20,7 @@ type ProgressOSD struct {
 var progressOSD *ProgressOSD
 
 func osdMessage(text, font, colour string, delay, x, y, width int) {
-	logger.Info("OSD message",
-		"text", text,
-		"x", x,
-		"y", y,
-		"width", width,
-	)
+	logger.Info("OSD message", "text", text, "x", x, "y", y, "width", width)
 
 	cmd := exec.Command(
 		"dzen2",
