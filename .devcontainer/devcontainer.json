@@ -15,7 +15,7 @@
 		"ghcr.io/devcontainers/features/go:1": {
 			"version": "latest"
 		},
-		"ghcr.io/devcontainers/features/apt-packages:1": {
+		"ghcr.io/devcontainers-extra/features/apt-packages": {
 			"packages": [
 				"vim",
 				"command-not-found",
