@@ -11,8 +11,8 @@ var cavaProcess *exec.Cmd
 var cavaStopRequested bool
 
 var cavaCmd = []string{
-	"rxvt", "-fn", "6x12",
-	"-geometry", "133x38+0+0",
+	"rxvt", "-fn", "5x8",
+	"-geometry", "160x58+0+0",
 	"-bg", "black", "-fg", "white", "+sb",
 	"-e", "cava",
 	"-p", os.ExpandEnv("$HOME/.config/cava/config"),
