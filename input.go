@@ -30,7 +30,6 @@ func startEvDevHandler(devPath string, events chan<- ControlEvent) {
 						events <- ControlEvent{Source: "input", Action: "play"}
 
 					case evdev.KEY_PAUSE:
-
 						events <- ControlEvent{Source: "input", Action: "pause"}
 
 					case evdev.KEY_PLAYPAUSE:
