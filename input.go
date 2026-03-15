@@ -28,26 +28,43 @@ func startEvDevHandler(devPath string, events chan<- ControlEvent) {
 					switch e.Code {
 					case evdev.KEY_PLAY:
 						events <- ControlEvent{Source: "input", Action: "play"}
+
 					case evdev.KEY_PAUSE:
+
 						events <- ControlEvent{Source: "input", Action: "pause"}
+
 					case evdev.KEY_PLAYPAUSE:
 						events <- ControlEvent{Source: "input", Action: "toggle"}
+
 					case evdev.KEY_STOPCD:
 						events <- ControlEvent{Source: "input", Action: "stop"}
+
 					case evdev.KEY_STOP:
 						events <- ControlEvent{Source: "input", Action: "stop"}
+
 					case evdev.KEY_NEXTSONG:
 						events <- ControlEvent{Source: "input", Action: "next"}
+
 					case evdev.KEY_PREVIOUSSONG:
 						events <- ControlEvent{Source: "input", Action: "prev"}
+
 					case evdev.KEY_FORWARD:
 						events <- ControlEvent{Source: "input", Action: "seek", Value: 10}
+
 					case evdev.KEY_FASTFORWARD:
 						events <- ControlEvent{Source: "input", Action: "seek", Value: 10}
+
 					case evdev.KEY_REWIND:
 						events <- ControlEvent{Source: "input", Action: "seek", Value: -10}
+
+					case evdev.KEY_UP:
+						events <- ControlEvent{Source: "input", Action: "seek", Value: 30}
+
+					case evdev.KEY_DOWN:
+						events <- ControlEvent{Source: "input", Action: "seek", Value: -30}
+
 					case evdev.KEY_POWER:
-						events <- ControlEvent{Action: "poweroff"}
+						events <- ControlEvent{Source: "input", Action: "poweroff"}
 					}
 				}
 			}
