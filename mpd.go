@@ -95,18 +95,19 @@ func mpdStatusWatcher(mpdAddr string, mpdClient **mpd.Client, mqttClient mqtt.Cl
 					title := song["Title"]
 					artist := song["Artist"]
 					album := song["Album"]
+					track := song["Track"]
 					file := song["file"]
 
 					// Song changed
 					if file != lastFile {
 						logger.Info("Current song changed", "last_file", lastFile, "file", file)
-						showSongInfo(artist, title, album)
+						showSongInfo(artist, album, title, track)
 						lastFile = file
 						lastTitle = title
 					}
 					// Title changed (covers streams)
 					if title != "" && title != lastTitle {
-						showSongInfo(artist, title, album)
+						showSongInfo(artist, album, title, track)
 						lastTitle = title
 					}
 

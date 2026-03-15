@@ -66,19 +66,18 @@ func showPlaybackIcon(state string) {
 	}
 }
 
-func showSongInfo(artist, title, album string) {
+func showSongInfo(artist, album, title, track string) {
 	if title == "" {
 		return
 	}
-	line1 := title
-	if artist != "" {
-		line1 = artist + " - " + title
-	}
-	osdMessage(line1, "DejaVu Sans-20", "#20c4bf", 4, 0, 0, 800)
-
+	osdMessage(artist, "DejaVu Sans-22", "#20c4bf", 6, 0, 0, 800)
 	if album != "" {
-		osdMessage(album, "DejaVu Sans-18:style=Oblique", "#20c4bf", 4, 0, 30, 800)
+		osdMessage(album, "DejaVu Sans-22:style=Oblique", "#20c4bf", 6, 0, 32, 800)
 	}
+	if track != "" {
+		title = fmt.Sprintf("%s. %s", track, title)
+	}
+	osdMessage(title, "DejaVu Sans-22", "#20c4bf", 6, 0, 64, 800)
 }
 
 func startProgressUpdater(mpdClient **mpd.Client, stop <-chan struct{}) {
