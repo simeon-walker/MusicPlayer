@@ -2,20 +2,63 @@ package main
 
 import (
 	"log/slog"
+	"sync"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/fhs/gompd/v2/mpd"
 )
 
+type SafeMPDClient struct {
+	addr   string
+	client *mpd.Client
+	mu     sync.Mutex
+}
+
+func NewSafeMPDClient(addr string) *SafeMPDClient {
+	return &SafeMPDClient{
+		addr: addr,
+	}
+}
+
+func (s *SafeMPDClient) Get() *mpd.Client {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.client != nil {
+		return s.client
+	}
+	c, err := mpd.Dial("tcp", s.addr)
+	if err != nil {
+		logger.Error("MPD connect failed", "err", err)
+		return nil
+	}
+
+	logger.Info("Connected to MPD")
+	s.client = c
+	return s.client
+}
+
+func (s *SafeMPDClient) Close() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.client == nil {
+		return
+	}
+	if s.client != nil {
+		s.client.Close()
+	}
+	s.client = nil
+}
+
 // Starts an MQTT publisher for MPD status messages
-func mpdStatusWatcher(mpdAddr string, mpdClient **mpd.Client, mqttClient mqtt.Client, mqttPrefix string, stopChan <-chan struct{}) {
+func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPrefix string, stopChan <-chan struct{}) {
+
 	go func() {
 		var lastState string
 		var lastTitle string
 		var lastFile string
-		ticker := time.NewTicker(45 * time.Second) // keepalive interval
-		defer ticker.Stop()
 
 		for {
 			select {
@@ -25,54 +68,46 @@ func mpdStatusWatcher(mpdAddr string, mpdClient **mpd.Client, mqttClient mqtt.Cl
 			}
 
 			// Start or restart the watcher
-			w, err := mpd.NewWatcher("tcp", mpdAddr, "", "player playlist")
+			w, err := mpd.NewWatcher("tcp", safeClient.addr, "", "player playlist")
 			if err != nil {
-				logger.Error("Failed to start MPD watcher. Retrying in 2s...", slog.Any("err", err))
+				logger.Error("Watcher start failed", "err", err)
 				time.Sleep(2 * time.Second)
 				continue
 			}
 			logger.Info("MPD watcher started")
+			ticker := time.NewTicker(45 * time.Second)
 
-			// Go routine to log watcher errors
-			go func() {
-				for err := range w.Error {
-					logger.Error("Watcher error", slog.Any("err", err))
-				}
-			}()
-
-			// Event loop
-			reconnect := false
-			for !reconnect {
+		watcherLoop:
+			for {
 				select {
+
 				case <-stopChan:
+					ticker.Stop()
 					w.Close()
 					return
-				case subsystem, ok := <-w.Event:
-					if !ok {
-						logger.Warn("Watcher channel closed, reconnecting...")
-						reconnect = true
-						break
-					}
+
+				case err := <-w.Error:
+					logger.Error("Watcher error", "err", err)
+					safeClient.Close()
+					break watcherLoop
+
+				case subsystem := <-w.Event:
 					logger.Info("Subsystem change", slog.Any("subsystem", subsystem))
 
 					// Ensure main mpdClient is connected
-					if *mpdClient == nil {
-						c, err := mpd.Dial("tcp", mpdAddr)
-						if err != nil {
-							logger.Error("Failed to connect main MPD client", slog.Any("err", err))
-							continue
-						}
-						*mpdClient = c
+					mpdClient := safeClient.Get()
+					if mpdClient == nil {
+						continue
 					}
 
 					// Fetch status
-					status, err := (*mpdClient).Status()
+					status, err := mpdClient.Status()
 					if err != nil {
-						logger.Warn("Status error. Reconnecting main client", slog.Any("err", err))
-						(*mpdClient).Close()
-						*mpdClient = nil
+						logger.Warn("Status failed", "err", err)
+						safeClient.Close()
 						continue
 					}
+
 					// Playback state change
 					state := status["state"]
 					if state != lastState {
@@ -85,29 +120,27 @@ func mpdStatusWatcher(mpdAddr string, mpdClient **mpd.Client, mqttClient mqtt.Cl
 					}
 
 					// Fetch current song
-					song, err := (*mpdClient).CurrentSong()
+
+					song, err := mpdClient.CurrentSong()
 					if err != nil {
-						logger.Error("CurrentSong error. Reconnecting main client", slog.Any("err", err))
-						(*mpdClient).Close()
-						*mpdClient = nil
+						logger.Warn("CurrentSong failed", "err", err)
+						safeClient.Close()
 						continue
 					}
+
 					title := song["Title"]
-					artist := song["Artist"]
-					album := song["Album"]
-					track := song["Track"]
 					file := song["file"]
 
 					// Song changed
 					if file != lastFile {
-						logger.Info("Current song changed", "last_file", lastFile, "file", file)
-						showSongInfo(artist, album, title, track)
+						showSongInfo(song["Artist"], song["Album"], title, song["Track"])
 						lastFile = file
 						lastTitle = title
 					}
+
 					// Title changed (covers streams)
 					if title != "" && title != lastTitle {
-						showSongInfo(artist, album, title, track)
+						showSongInfo(song["Artist"], song["Album"], title, song["Track"])
 						lastTitle = title
 					}
 
@@ -115,19 +148,23 @@ func mpdStatusWatcher(mpdAddr string, mpdClient **mpd.Client, mqttClient mqtt.Cl
 
 				case <-ticker.C:
 					// Periodic keepalive
-					if *mpdClient != nil {
-						_, err := (*mpdClient).Status()
-						if err != nil {
-							logger.Error("Keepalive failed, reconnecting main client:", slog.Any("err", err))
-							(*mpdClient).Close()
-							*mpdClient = nil
-						}
+					mpdClient := safeClient.Get()
+					if mpdClient == nil {
+						continue
+					}
+
+					_, err := mpdClient.Status()
+					if err != nil {
+						logger.Warn("Keepalive failed", "err", err)
+						safeClient.Close()
 					}
 				}
 			}
 
 			// Close watcher and back off before reconnect
+			ticker.Stop()
 			w.Close()
+
 			logger.Info("Reconnecting MPD watcher in 2s...")
 			time.Sleep(2 * time.Second)
 		}

@@ -4,20 +4,7 @@ import (
 	"log/slog"
 	"os/exec"
 	"time"
-
-	"github.com/fhs/gompd/v2/mpd"
 )
-
-type SafeMPDClient struct {
-	client **mpd.Client
-}
-
-func (s *SafeMPDClient) Get() *mpd.Client {
-	if s.client == nil || *s.client == nil {
-		return nil
-	}
-	return *s.client
-}
 
 // Dispatches commands to the MPD server based upon received events
 func eventDispatcher(safeClient *SafeMPDClient, events <-chan ControlEvent) {

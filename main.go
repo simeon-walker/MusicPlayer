@@ -66,7 +66,7 @@ func main() {
 		defer mpdClient.Close()
 		logger.Info("Connected to MPD", slog.Any("server", *mpdServer))
 	}
-	safeClient := &SafeMPDClient{client: &mpdClient}
+	safeClient := NewSafeMPDClient(*mpdServer)
 
 	// Start MQTT
 	mqttClient := startMQTT(events, *mqttServer, *mqttPrefix, *mqttUser, *mqttPass)
@@ -79,11 +79,11 @@ func main() {
 
 	// Start MPD-MQTT status publisher
 	stopChan := make(chan struct{})
-	mpdStatusWatcher(*mpdServer, &mpdClient, mqttClient, *mqttPrefix, stopChan)
+	mpdStatusWatcher(safeClient, mqttClient, *mqttPrefix, stopChan)
 
 	// Show progress bar and start listener
 	startProgressOSD()
-	startProgressUpdater(&mpdClient, stopChan)
+	startProgressUpdater(safeClient, stopChan)
 
 	// Handle Ctrl+C / SIGTERM
 	sigChan := make(chan os.Signal, 1)
@@ -98,9 +98,7 @@ func main() {
 		close(stopChan)
 		mqttClient.Disconnect(250)
 
-		if mpdClient != nil {
-			mpdClient.Close()
-		}
+		safeClient.Close()
 
 		os.Exit(0)
 	}()

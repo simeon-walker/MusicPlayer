@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"syscall"
 	"time"
-
-	"github.com/fhs/gompd/v2/mpd"
 )
 
 type ProgressOSD struct {
@@ -80,17 +78,22 @@ func showSongInfo(artist, album, title, track string) {
 	osdMessage(title, "DejaVu Sans-22", "#20c4bf", 6, 0, 64, 800)
 }
 
-func startProgressUpdater(mpdClient **mpd.Client, stop <-chan struct{}) {
+func startProgressUpdater(safeClient *SafeMPDClient, stop <-chan struct{}) {
 	go func() {
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
 		for {
 			select {
+
 			case <-stop:
 				return
+
 			case <-ticker.C:
-				if *mpdClient == nil {
+				mpdClient := safeClient.Get()
+				if mpdClient == nil {
+					logger.Warn("ProgressUpdater: MPD unavailable")
+					time.Sleep(2 * time.Second)
 					continue
 				}
 
