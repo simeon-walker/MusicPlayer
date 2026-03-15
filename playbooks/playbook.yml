@@ -57,13 +57,6 @@
         dest: /etc/modprobe.d/alsa-base.conf
         mode: "0644"
 
-    - name: Copy triggerhappy configuration
-      become: true
-      ansible.builtin.copy:
-        src: files/thd-mpc.conf
-        dest: /etc/triggerhappy/triggers.d/mpc.conf
-        mode: "0644"
-
     - name: Enable systemd-logind poweroff via suspend key
       become: true
       ansible.builtin.lineinfile:
