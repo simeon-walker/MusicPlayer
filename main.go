@@ -33,6 +33,10 @@ func main() {
 	if !found {
 		mqttServerEnv = "tcp://localhost:1883"
 	}
+	mqttPrefixEnv, found := os.LookupEnv("MQTT_TOPIC")
+	if !found {
+		mqttPrefixEnv = "home/media"
+	}
 	mqttUserEnv, _ := os.LookupEnv("MQTT_USER")
 	mqttPassEnv, _ := os.LookupEnv("MQTT_PASS")
 	inputDeviceEnv, found := os.LookupEnv("INPUT_DEVICE")
@@ -43,6 +47,7 @@ func main() {
 	// ---- Command-line flags ----
 	mpdServer := flag.String("mpd", mpdServerEnv, "MPD server address (host:port)")
 	mqttServer := flag.String("mqtt-server", mqttServerEnv, "MQTT server URI")
+	mqttPrefix := flag.String("mqtt-prefix", mqttPrefixEnv, "Prefix for MQTT /control and /status topics")
 	mqttUser := flag.String("mqtt-user", mqttUserEnv, "MQTT username")
 	mqttPass := flag.String("mqtt-pass", mqttPassEnv, "MQTT password")
 	inputDevice := flag.String("input", inputDeviceEnv, "Input device path (FLIRC)")
@@ -64,7 +69,7 @@ func main() {
 	safeClient := &SafeMPDClient{client: &mpdClient}
 
 	// Start MQTT
-	mqttClient := startMQTT(events, *mqttServer, *mqttUser, *mqttPass)
+	mqttClient := startMQTT(events, *mqttServer, *mqttPrefix, *mqttUser, *mqttPass)
 
 	// Starts evdev input handler
 	startEvDevHandler(*inputDevice, events)
@@ -74,7 +79,7 @@ func main() {
 
 	// Start MPD-MQTT status publisher
 	stopChan := make(chan struct{})
-	mpdStatusWatcher(*mpdServer, &mpdClient, mqttClient, stopChan)
+	mpdStatusWatcher(*mpdServer, &mpdClient, mqttClient, *mqttPrefix, stopChan)
 
 	// Show progress bar and start listener
 	startProgressOSD()

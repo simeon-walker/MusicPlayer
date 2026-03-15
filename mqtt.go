@@ -10,7 +10,7 @@ import (
 )
 
 // Starts an MQTT listener for control messages
-func startMQTT(events chan<- ControlEvent, server, user, pass string) mqtt.Client {
+func startMQTT(events chan<- ControlEvent, server, prefix, user, pass string) mqtt.Client {
 	opts := mqtt.NewClientOptions().AddBroker(server)
 	opts.SetClientID("mpd-controller")
 	if user != "" {
@@ -28,7 +28,7 @@ func startMQTT(events chan<- ControlEvent, server, user, pass string) mqtt.Clien
 	logger.Info("Connected to MQTT", slog.Any("server", server))
 
 	// Subscribe for remote control
-	client.Subscribe("home/media/control", 0, func(_ mqtt.Client, msg mqtt.Message) {
+	client.Subscribe(prefix+"/control", 0, func(_ mqtt.Client, msg mqtt.Message) {
 		payload := string(msg.Payload())
 		events <- ControlEvent{Source: "mqtt", Action: payload}
 	})

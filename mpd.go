@@ -9,7 +9,7 @@ import (
 )
 
 // Starts an MQTT publisher for MPD status messages
-func mpdStatusWatcher(mpdAddr string, mpdClient **mpd.Client, mqttClient mqtt.Client, mqttTopic string, stopChan <-chan struct{}) {
+func mpdStatusWatcher(mpdAddr string, mpdClient **mpd.Client, mqttClient mqtt.Client, mqttPrefix string, stopChan <-chan struct{}) {
 	go func() {
 		var lastState string
 		var lastTitle string
@@ -110,7 +110,7 @@ func mpdStatusWatcher(mpdAddr string, mpdClient **mpd.Client, mqttClient mqtt.Cl
 						lastTitle = title
 					}
 
-					sendMQTTStatus(mqttClient, mqttTopic, song, status)
+					sendMQTTStatus(mqttClient, mqttPrefix+"/status", song, status)
 
 				case <-ticker.C:
 					// Periodic keepalive
