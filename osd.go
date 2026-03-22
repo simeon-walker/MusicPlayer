@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -15,7 +17,10 @@ type ProgressOSD struct {
 	stdin io.WriteCloser
 }
 
-var progressOSD *ProgressOSD
+var (
+	progressOSD *ProgressOSD
+	progressMu  sync.Mutex
+)
 
 func osdMessage(text, font, colour string, delay, x, y, width int) {
 	logger.Info("OSD message", "text", text, "x", x, "y", y, "width", width)
@@ -133,35 +138,43 @@ func startProgressOSD() {
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		logger.Error("Progress OSD pipe error", "err", err)
+		logger.Error("Progress OSD pipe error", slog.Any("err", err))
 		return
 	}
 
 	err = cmd.Start()
 	if err != nil {
-		logger.Error("Progress OSD start error", "err", err)
+		logger.Error("Progress OSD start error", slog.Any("err", err))
 		return
 	}
 
+	progressMu.Lock()
 	progressOSD = &ProgressOSD{
 		cmd:   cmd,
 		stdin: stdin,
 	}
+	progressMu.Unlock()
 	logger.Info("Progress OSD started", "pid", cmd.Process.Pid)
 
 	go func() {
 		cmd.Wait()
+		progressMu.Lock()
 		progressOSD = nil
+		progressMu.Unlock()
 	}()
 }
 
 func progressPrint(text string) {
-	if progressOSD == nil || progressOSD.stdin == nil {
+	progressMu.Lock()
+	osd := progressOSD
+	progressMu.Unlock()
+
+	if osd == nil || osd.stdin == nil {
 		return
 	}
-	_, err := io.WriteString(progressOSD.stdin, text+"\n")
+	_, err := io.WriteString(osd.stdin, text+"\n")
 	if err != nil {
-		logger.Warn("Progress OSD write failed", "err", err)
+		logger.Warn("Progress OSD write failed", slog.Any("err", err))
 	}
 }
 
@@ -184,9 +197,14 @@ func renderProgress(elapsed, duration float64) {
 }
 
 func stopProgressOSD() {
-	if progressOSD == nil {
+	progressMu.Lock()
+	osd := progressOSD
+	progressOSD = nil
+	progressMu.Unlock()
+
+	if osd == nil {
 		return
 	}
-	progressOSD.stdin.Close()
-	progressOSD.cmd.Process.Signal(syscall.SIGTERM)
+	osd.stdin.Close()
+	osd.cmd.Process.Signal(syscall.SIGTERM)
 }

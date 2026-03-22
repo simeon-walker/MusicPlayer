@@ -8,7 +8,7 @@ import (
 )
 
 // Starts an evdev listener for the remote control
-func startEvDevHandler(devPath string, events chan<- ControlEvent) {
+func startEvDevHandler(devPath string, events chan<- ControlEvent, stopChan <-chan struct{}) {
 	dev, err := evdev.Open(devPath)
 	if err != nil {
 		logger.Error("Failed to open input device", slog.Any("err", err))
@@ -17,7 +17,15 @@ func startEvDevHandler(devPath string, events chan<- ControlEvent) {
 	logger.Info("Listening on input device", slog.Any("device", devPath))
 
 	go func() {
+		defer dev.Close() // Ensure device is closed on exit
 		for {
+			select {
+			case <-stopChan: // Exit gracefully
+				logger.Info("Input handler shutting down")
+				return
+			default:
+			}
+
 			inputEvents, err := dev.ReadSlice(64)
 			if err != nil {
 				logger.Error("Error reading input", slog.Any("err", err))

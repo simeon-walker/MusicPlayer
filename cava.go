@@ -3,12 +3,16 @@ package main
 import (
 	"os"
 	"os/exec"
+	"sync"
 	"syscall"
 	"time"
 )
 
-var cavaProcess *exec.Cmd
-var cavaStopRequested bool
+var (
+	cavaProcess       *exec.Cmd
+	cavaStopRequested bool
+	cavaMu            sync.Mutex // Add this
+)
 
 var cavaCmd = []string{
 	"rxvt", "-fn", "5x8",
@@ -19,16 +23,22 @@ var cavaCmd = []string{
 }
 
 func startCava() {
+	cavaMu.Lock()
 	if cavaProcess != nil {
+		cavaMu.Unlock()
 		logger.Info("CAVA supervisor already running")
 		return
 	}
+	cavaMu.Unlock()
 
 	go func() {
 		for {
+			cavaMu.Lock()
 			if cavaStopRequested {
+				cavaMu.Unlock()
 				return
 			}
+			cavaMu.Unlock()
 
 			cmd := exec.Command(cavaCmd[0], cavaCmd[1:]...)
 			err := cmd.Start()
@@ -37,15 +47,24 @@ func startCava() {
 				time.Sleep(5 * time.Second)
 				continue
 			}
+
+			cavaMu.Lock() // Update safely
 			cavaProcess = cmd
+			cavaMu.Unlock()
 			logger.Info("Started CAVA", "pid", cmd.Process.Pid)
 
 			err = cmd.Wait()
+
+			cavaMu.Lock()
 			cavaProcess = nil
-			if cavaStopRequested {
+			shouldStop := cavaStopRequested
+			cavaMu.Unlock()
+
+			if shouldStop {
 				logger.Info("CAVA stopped")
 				return
 			}
+
 			if err != nil {
 				logger.Warn("CAVA exited unexpectedly", "err", err)
 			} else {
@@ -59,13 +78,17 @@ func startCava() {
 }
 
 func stopCava() {
+	cavaMu.Lock()
 	cavaStopRequested = true
-	if cavaProcess == nil || cavaProcess.Process == nil {
+	proc := cavaProcess
+	cavaMu.Unlock()
+
+	if proc == nil || proc.Process == nil {
 		return
 	}
 	logger.Info("Stopping CAVA")
 
-	err := cavaProcess.Process.Signal(syscall.SIGTERM)
+	err := proc.Process.Signal(syscall.SIGTERM)
 	if err != nil {
 		logger.Warn("Failed to signal CAVA", "err", err)
 	}
