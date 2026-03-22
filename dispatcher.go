@@ -19,25 +19,39 @@ func eventDispatcher(safeClient *SafeMPDClient, events <-chan ControlEvent) {
 
 		switch ev.Action {
 		case "play":
-			mpdClient.Play(-1)
+			if err := mpdClient.Play(-1); err != nil {
+				logger.Error("Play failed", slog.Any("err", err))
+			}
 
 		case "pause":
-			mpdClient.Pause(true)
+			if err := mpdClient.Pause(true); err != nil {
+				logger.Error("Pause failed", slog.Any("err", err))
+			}
 
 		case "toggle":
-			mpdClient.Pause(false)
+			if err := mpdClient.Pause(false); err != nil {
+				logger.Error("Toggle failed", slog.Any("err", err))
+			}
 
 		case "stop":
-			mpdClient.Stop()
+			if err := mpdClient.Stop(); err != nil {
+				logger.Error("Stop failed", slog.Any("err", err))
+			}
 
 		case "next":
-			mpdClient.Next()
+			if err := mpdClient.Next(); err != nil {
+				logger.Error("Next failed", slog.Any("err", err))
+			}
 
 		case "prev":
-			mpdClient.Previous()
+			if err := mpdClient.Previous(); err != nil {
+				logger.Error("Previous failed", slog.Any("err", err))
+			}
 
 		case "seek":
-			mpdClient.SeekCur(time.Duration(ev.Value)*time.Second, true)
+			if err := mpdClient.SeekCur(time.Duration(ev.Value)*time.Second, true); err != nil {
+				logger.Error("Seek failed", slog.Any("err", err))
+			}
 
 		case "poweroff":
 			logger.Warn("Powering off system...")

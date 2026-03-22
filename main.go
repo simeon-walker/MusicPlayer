@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/fhs/gompd/v2/mpd"
 	"github.com/joho/godotenv"
 )
 
@@ -56,29 +55,21 @@ func main() {
 	events := make(chan ControlEvent, 10)
 
 	// Connect main MPD client on demand
-	var mpdClient *mpd.Client
-	var err error
-	mpdClient, err = mpd.Dial("tcp", *mpdServer)
-	if err != nil {
-		logger.Error("Initial MPD connect failed, will retry in watcher:", slog.Any("err", err))
-		mpdClient = nil
-	} else {
-		defer mpdClient.Close()
-		logger.Info("Connected to MPD", slog.Any("server", *mpdServer))
-	}
 	safeClient := NewSafeMPDClient(*mpdServer)
+	logger.Info("MPD server configured", slog.Any("server", *mpdServer))
 
 	// Start MQTT
 	mqttClient := startMQTT(events, *mqttServer, *mqttPrefix, *mqttUser, *mqttPass)
 
+	stopChan := make(chan struct{})
+
 	// Starts evdev input handler
-	startEvDevHandler(*inputDevice, events)
+	startEvDevHandler(*inputDevice, events, stopChan)
 
 	// Start CAVA visualizer
 	startCava()
 
 	// Start MPD-MQTT status publisher
-	stopChan := make(chan struct{})
 	mpdStatusWatcher(safeClient, mqttClient, *mqttPrefix, stopChan)
 
 	// Show progress bar and start listener

@@ -30,7 +30,7 @@ func (s *SafeMPDClient) Get() *mpd.Client {
 	}
 	c, err := mpd.Dial("tcp", s.addr)
 	if err != nil {
-		logger.Error("MPD connect failed", "err", err)
+		logger.Error("MPD connect failed", slog.Any("err", err))
 		return nil
 	}
 
@@ -70,7 +70,7 @@ func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPre
 			// Start or restart the watcher
 			w, err := mpd.NewWatcher("tcp", safeClient.addr, "", "player playlist")
 			if err != nil {
-				logger.Error("Watcher start failed", "err", err)
+				logger.Error("Watcher start failed", slog.Any("err", err))
 				time.Sleep(2 * time.Second)
 				continue
 			}
@@ -87,7 +87,7 @@ func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPre
 					return
 
 				case err := <-w.Error:
-					logger.Error("Watcher error", "err", err)
+					logger.Error("Watcher error", slog.Any("err", err))
 					safeClient.Close()
 					break watcherLoop
 
@@ -103,7 +103,7 @@ func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPre
 					// Fetch status
 					status, err := mpdClient.Status()
 					if err != nil {
-						logger.Warn("Status failed", "err", err)
+						logger.Warn("Status failed", slog.Any("err", err))
 						safeClient.Close()
 						continue
 					}
@@ -123,7 +123,7 @@ func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPre
 
 					song, err := mpdClient.CurrentSong()
 					if err != nil {
-						logger.Warn("CurrentSong failed", "err", err)
+						logger.Warn("CurrentSong failed", slog.Any("err", err))
 						safeClient.Close()
 						continue
 					}
@@ -155,7 +155,7 @@ func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPre
 
 					_, err := mpdClient.Status()
 					if err != nil {
-						logger.Warn("Keepalive failed", "err", err)
+						logger.Warn("Keepalive failed", slog.Any("err", err))
 						safeClient.Close()
 					}
 				}
