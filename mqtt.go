@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"log/slog"
 	"os"
+	"strconv"
+	"strings"
+	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/fhs/gompd/v2/mpd"
@@ -28,10 +31,35 @@ func startMQTT(events chan<- ControlEvent, server, prefix, user, pass string) mq
 	logger.Info("Connected to MQTT", slog.Any("server", server))
 
 	// Subscribe for remote control
-	client.Subscribe(prefix+"/control", 0, func(_ mqtt.Client, msg mqtt.Message) {
+	token := client.Subscribe(prefix+"/control", 0, func(_ mqtt.Client, msg mqtt.Message) {
 		payload := string(msg.Payload())
-		events <- ControlEvent{Source: "mqtt", Action: payload}
+
+		action := payload
+		value := 0
+
+		// Parse "action:value" format (e.g., "seek:10")
+		parts := strings.Split(payload, ":")
+		if len(parts) == 2 {
+			action = parts[0]
+			if v, err := strconv.Atoi(parts[1]); err == nil {
+				value = v
+			}
+		}
+
+		events <- ControlEvent{Source: "mqtt", Action: action, Value: value}
 	})
+
+	if !token.WaitTimeout(5 * time.Second) {
+		logger.Error("MQTT subscribe timeout")
+		os.Exit(1)
+	}
+
+	if token.Error() != nil {
+		logger.Error("MQTT subscribe failed", slog.Any("err", token.Error()))
+		os.Exit(1)
+	}
+
+	logger.Info("Subscribed to MQTT topic", slog.Any("topic", prefix+"/control"))
 
 	return client
 }
