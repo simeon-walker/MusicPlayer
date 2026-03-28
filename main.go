@@ -58,6 +58,8 @@ func main() {
 	safeClient := NewSafeMPDClient(*mpdServer)
 	logger.Info("MPD server configured", slog.Any("server", *mpdServer))
 
+	startSongInfoDisplay()
+
 	// Start MQTT
 	mqttClient := startMQTT(events, *mqttServer, *mqttPrefix, *mqttUser, *mqttPass)
 

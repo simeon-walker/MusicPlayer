@@ -53,6 +53,24 @@ func eventDispatcher(safeClient *SafeMPDClient, events <-chan ControlEvent) {
 				logger.Error("Seek failed", slog.Any("err", err))
 			}
 
+		case "info":
+			mpdClient := safeClient.Get()
+			if mpdClient == nil {
+				logger.Warn("Info requested but MPD unavailable")
+				continue
+			}
+			song, err := mpdClient.CurrentSong()
+			if err != nil {
+				logger.Error("Failed to fetch current song", slog.Any("err", err))
+				continue
+			}
+			displaySongInfo(SongInfoRequest{
+				Artist: song["Artist"],
+				Album:  song["Album"],
+				Title:  song["Title"],
+				Track:  song["Track"],
+			})
+
 		case "poweroff":
 			logger.Warn("Powering off system...")
 			err := exec.Command("systemctl", "poweroff").Run()
