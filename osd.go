@@ -54,6 +54,9 @@ func osdMessage(text, font, colour string, delay, x, y, width int) {
 
 	io.WriteString(stdin, text+"\n")
 	stdin.Close()
+
+	// Reap the process to avoid zombie processes
+	go cmd.Wait()
 }
 
 func showPlaybackIcon(state string) {
