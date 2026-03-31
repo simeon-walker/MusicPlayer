@@ -135,8 +135,7 @@ func startProgressOSD() {
 		"-x", "0",
 		"-y", "470",
 		"-w", "800",
-		"-h", "20",
-		"-fn", "DejaVu Sans Mono-14",
+		"-fn", "DejaVu Sans Mono-10",
 	)
 
 	stdin, err := cmd.StdinPipe()
@@ -185,7 +184,7 @@ func renderProgress(elapsed, duration float64) {
 	if duration <= 0 {
 		return
 	}
-	const width = 76
+	const width = 100
 	progress := int((elapsed / duration) * width)
 	bar := ""
 
