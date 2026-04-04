@@ -108,16 +108,17 @@ func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPre
 						continue
 					}
 
-					// Playback state change
-					state := status["state"]
-					if state != lastState {
-						logger.Info("Playback state changed", "last_state", lastState, "state", state)
-						showPlaybackIcon(state)
-						if state == "stop" {
-							progressPrint("")
-						}
-						lastState = state
+				// Playback state change
+				state := status["state"]
+				if state != lastState {
+					logger.Info("Playback state changed", "last_state", lastState, "state", state)
+					showPlaybackIcon(state)
+					if state == "stop" {
+						// Clear progress bar on stop
+						UpdateProgress(0, 0)
 					}
+					lastState = state
+				}
 
 					// Fetch current song
 
@@ -152,6 +153,11 @@ func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPre
 							Track:  song["Track"],
 						})
 						lastTitle = title
+					}
+
+					audio := status["audio"]
+					if audio != "" {
+						logger.Info("Audio format", "audio", audio)
 					}
 
 					sendMQTTStatus(mqttClient, mqttPrefix+"/status", song, status)

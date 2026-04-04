@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"os"
 	"os/exec"
 	"sync"
@@ -11,16 +12,8 @@ import (
 var (
 	cavaProcess       *exec.Cmd
 	cavaStopRequested bool
-	cavaMu            sync.Mutex // Add this
+	cavaMu            sync.Mutex
 )
-
-var cavaCmd = []string{
-	"rxvt", "-fn", "5x8",
-	"-geometry", "160x58+0+0",
-	"-bg", "black", "-fg", "white", "+sb",
-	"-e", "cava",
-	"-p", os.ExpandEnv("$HOME/.config/cava/config"),
-}
 
 func startCava() {
 	cavaMu.Lock()
@@ -40,18 +33,44 @@ func startCava() {
 			}
 			cavaMu.Unlock()
 
-			cmd := exec.Command(cavaCmd[0], cavaCmd[1:]...)
-			err := cmd.Start()
+			// Run Cava directly (not in rxvt)
+			// It will output bar heights as comma-separated numbers
+			cmd := exec.Command("cava", "-p", os.ExpandEnv("$HOME/.config/cava/config"))
+			
+			// Get stdout pipe to read bar data
+			stdout, err := cmd.StdoutPipe()
+			if err != nil {
+				logger.Error("Failed to get CAVA stdout", "err", err)
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			err = cmd.Start()
 			if err != nil {
 				logger.Error("Failed to start CAVA", "err", err)
 				time.Sleep(5 * time.Second)
 				continue
 			}
 
-			cavaMu.Lock() // Update safely
+			cavaMu.Lock()
 			cavaProcess = cmd
 			cavaMu.Unlock()
 			logger.Info("Started CAVA", "pid", cmd.Process.Pid)
+
+			// Read bar data from Cava output
+			scanner := bufio.NewScanner(stdout)
+			for scanner.Scan() {
+				line := scanner.Text()
+				if line != "" {
+					logger.Debug("CAVA output", "line", line[:min(80, len(line))])
+					// Pass bar heights to SDL renderer
+					UpdateVisualizerBars(line)
+				}
+			}
+
+			if err := scanner.Err(); err != nil {
+				logger.Warn("CAVA read error", "err", err)
+			}
 
 			err = cmd.Wait()
 
@@ -66,9 +85,7 @@ func startCava() {
 			}
 
 			if err != nil {
-				logger.Warn("CAVA exited unexpectedly", "err", err)
-			} else {
-				logger.Warn("CAVA exited")
+				logger.Warn("CAVA exited", "err", err)
 			}
 
 			logger.Info("Restarting CAVA in 3s")

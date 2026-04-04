@@ -17,9 +17,12 @@ type ControlEvent struct {
 	Value  int    // for seek seconds, etc.
 }
 
-var logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+var logger *slog.Logger
 
 func main() {
+	// Initialize logger early with default level (will update if debug flag is set)
+	logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+
 	// Load .env file if it exists
 	loadDotEnv()
 
@@ -50,13 +53,25 @@ func main() {
 	mqttUser := flag.String("mqtt-user", mqttUserEnv, "MQTT username")
 	mqttPass := flag.String("mqtt-pass", mqttPassEnv, "MQTT password")
 	inputDevice := flag.String("input", inputDeviceEnv, "Input device path (FLIRC)")
+	debug := flag.Bool("debug", false, "Enable debug logging")
 	flag.Parse()
+
+	// Update logger level if debug flag is set
+	if *debug {
+		logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	}
 
 	events := make(chan ControlEvent, 10)
 
 	// Connect main MPD client on demand
 	safeClient := NewSafeMPDClient(*mpdServer)
 	logger.Info("MPD server configured", slog.Any("server", *mpdServer))
+
+	// Initialize SDL for visualization
+	if err := InitSDL(); err != nil {
+		logger.Error("SDL initialization failed", "err", err)
+		os.Exit(1)
+	}
 
 	startSongInfoDisplay()
 
@@ -74,8 +89,7 @@ func main() {
 	// Start MPD-MQTT status publisher
 	mpdStatusWatcher(safeClient, mqttClient, *mqttPrefix, stopChan)
 
-	// Show progress bar and start listener
-	startProgressOSD()
+	// Start progress updater (SDL-based)
 	startProgressUpdater(safeClient, stopChan)
 
 	// Handle Ctrl+C / SIGTERM
@@ -85,8 +99,8 @@ func main() {
 		<-sigChan
 		logger.Warn("Shutting down...")
 
-		stopProgressOSD()
 		stopCava()
+		ShutdownSDL()
 
 		close(stopChan)
 		mqttClient.Disconnect(250)

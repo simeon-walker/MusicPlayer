@@ -7,6 +7,7 @@ require (
 	github.com/fhs/gompd/v2 v2.3.0
 	github.com/holoplot/go-evdev v0.0.0-20250804134636-ab1d56a1fe83
 	github.com/joho/godotenv v1.5.1
+	github.com/veandco/go-sdl2 v0.4.40
 )
 
 require (
