@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
 	"github.com/veandco/go-sdl2/ttf"
@@ -20,24 +21,30 @@ const (
 	// Font paths - adjust for small displays like Raspberry Pi touchscreen
 	DefaultFontPath = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 	IconFontPath    = "/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf" // Use a font with better symbols if needed
+
+	DefaultFontSize         = 20
+	LargeFontSize           = 24
+	IconFontSize            = 24
+	SongInfoDisplayDuration = 5 * time.Second
 )
 
 type SDLRenderer struct {
-	window   *sdl.Window
-	renderer *sdl.Renderer
-	font     *ttf.Font
-	fontBig  *ttf.Font
-	fontIcon *ttf.Font
+	window      *sdl.Window
+	renderer    *sdl.Renderer
+	defaultFont *ttf.Font
+	largeFont   *ttf.Font
+	iconFont    *ttf.Font
 
 	// Visualizer data
 	barHeights []int
 	barMu      sync.Mutex
 
 	// Display state
-	displayMu sync.Mutex
-	songInfo  SongDisplay
-	progress  ProgressDisplay
-	playState string
+	displayMu      sync.Mutex
+	songInfo       SongDisplay
+	songInfoExpiry time.Time
+	progress       ProgressDisplay
+	playState      string
 }
 
 type SongDisplay struct {
@@ -108,19 +115,19 @@ func InitSDL() error {
 	logger.Debug("Creating renderer")
 
 	// Try software renderer first for better compatibility
-	renderer, err := sdl.CreateRenderer(window, -1, sdl.RENDERER_SOFTWARE)
+	renderer, err := sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED)
 	if err != nil {
-		logger.Debug("Software renderer failed, trying accelerated", "err", err)
-		renderer, err = sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED)
+		logger.Debug("Accelerated renderer failed, trying software", "err", err)
+		renderer, err = sdl.CreateRenderer(window, -1, sdl.RENDERER_SOFTWARE)
 		if err != nil {
 			window.Destroy()
 			ttf.Quit()
 			sdl.Quit()
 			return fmt.Errorf("renderer creation failed: %v", err)
 		}
-		logger.Info("Renderer created (accelerated)")
-	} else {
 		logger.Info("Renderer created (software)")
+	} else {
+		logger.Info("Renderer created (accelerated)")
 	}
 
 	renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
@@ -129,36 +136,36 @@ func InitSDL() error {
 	renderer.Present()
 
 	// Load fonts
-	fontPath := DefaultFontPath
-	font, err := ttf.OpenFont(fontPath, 14)
+	defaultFontPath := DefaultFontPath
+	defaultfont, err := ttf.OpenFont(defaultFontPath, DefaultFontSize)
 	if err != nil {
-		logger.Warn("Could not load font", "path", fontPath, "err", err)
-		fontPath = "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
-		font, err = ttf.OpenFont(fontPath, 14)
+		logger.Warn("Could not load font", "path", defaultFontPath, "err", err)
+		defaultFontPath = "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+		defaultfont, err = ttf.OpenFont(defaultFontPath, DefaultFontSize)
 		if err != nil {
 			logger.Warn("Could not load fallback font", "err", err)
 		}
 	}
 
-	fontBig, err := ttf.OpenFont(fontPath, 24)
+	largeFont, err := ttf.OpenFont(defaultFontPath, LargeFontSize)
 	if err != nil {
 		logger.Warn("Could not load big font", "err", err)
 	}
 
-	fontIcon, err := ttf.OpenFont(IconFontPath, 14)
+	iconFont, err := ttf.OpenFont(IconFontPath, IconFontSize)
 	if err != nil {
 		logger.Warn("Could not load icon font", "path", IconFontPath, "err", err)
-		fontIcon = font // Fallback to default font
+		iconFont = defaultfont // Fallback to default font
 	}
 
 	sdlRenderer = &SDLRenderer{
-		window:     window,
-		renderer:   renderer,
-		font:       font,
-		fontBig:    fontBig,
-		fontIcon:   fontIcon,
-		barHeights: make([]int, 0),
-		playState:  "stop",
+		window:      window,
+		renderer:    renderer,
+		defaultFont: defaultfont,
+		largeFont:   largeFont,
+		iconFont:    iconFont,
+		barHeights:  make([]int, 0),
+		playState:   "stop",
 	}
 
 	logger.Info("SDL initialized", "size", fmt.Sprintf("%dx%d", WindowWidth, WindowHeight))
@@ -174,14 +181,14 @@ func ShutdownSDL() {
 		return
 	}
 
-	if sdlRenderer.fontBig != nil {
-		sdlRenderer.fontBig.Close()
+	if sdlRenderer.largeFont != nil {
+		sdlRenderer.largeFont.Close()
 	}
-	if sdlRenderer.fontIcon != nil {
-		sdlRenderer.fontIcon.Close()
+	if sdlRenderer.iconFont != nil {
+		sdlRenderer.iconFont.Close()
 	}
-	if sdlRenderer.font != nil {
-		sdlRenderer.font.Close()
+	if sdlRenderer.defaultFont != nil {
+		sdlRenderer.defaultFont.Close()
 	}
 	if sdlRenderer.renderer != nil {
 		sdlRenderer.renderer.Destroy()
@@ -265,6 +272,9 @@ func UpdateProgress(elapsed, duration float64) {
 
 // ShowSongInfo displays song information
 func ShowSongInfo(artist, album, title, track string) {
+	if title == "" {
+		return
+	}
 	sdlMu.Lock()
 	sr := sdlRenderer
 	sdlMu.Unlock()
@@ -278,6 +288,22 @@ func ShowSongInfo(artist, album, title, track string) {
 		Album:  album,
 		Title:  title,
 		Track:  track,
+	}
+	sr.songInfoExpiry = time.Now().Add(SongInfoDisplayDuration)
+	sr.displayMu.Unlock()
+}
+
+func RefreshSongInfo() {
+	sdlMu.Lock()
+	sr := sdlRenderer
+	sdlMu.Unlock()
+	if sr == nil {
+		return
+	}
+
+	sr.displayMu.Lock()
+	if sr.songInfo.Title != "" {
+		sr.songInfoExpiry = time.Now().Add(SongInfoDisplayDuration)
 	}
 	sr.displayMu.Unlock()
 }
@@ -442,56 +468,55 @@ func (sr *SDLRenderer) drawProgressBar() {
 	timeStr := formatTime(elapsed, duration)
 	stateIcon := getPlayStateIcon(playState)
 
-	if sr.font != nil {
-		// Render time text
-		textSurface, err := sr.font.RenderUTF8Solid(timeStr, sdl.Color{R: 255, G: 255, B: 255, A: 255})
-		if err == nil && textSurface != nil {
-			defer textSurface.Free()
-			texture, err := sr.renderer.CreateTextureFromSurface(textSurface)
-			if err == nil && texture != nil {
-				defer texture.Destroy()
-				dstRect := &sdl.Rect{
-					X: 10,
-					Y: int32(VisualizerHeight + 15),
-					W: textSurface.W,
-					H: textSurface.H,
-				}
-				sr.renderer.Copy(texture, nil, dstRect)
+	// Render time text
+	textSurface, err := sr.defaultFont.RenderUTF8Blended(timeStr, sdl.Color{R: 255, G: 255, B: 255, A: 255})
+	if err == nil && textSurface != nil {
+		defer textSurface.Free()
+		texture, err := sr.renderer.CreateTextureFromSurface(textSurface)
+		if err == nil && texture != nil {
+			defer texture.Destroy()
+			dstRect := &sdl.Rect{
+				X: 10,
+				Y: int32(VisualizerHeight + 15),
+				W: textSurface.W,
+				H: textSurface.H,
 			}
-		}
-
-		// Render playback state icon
-		if sr.fontIcon != nil {
-			iconSurface, err := sr.fontIcon.RenderUTF8Solid(stateIcon, sdl.Color{R: 255, G: 255, B: 255, A: 255})
-			if err == nil && iconSurface != nil {
-				defer iconSurface.Free()
-				texture, err := sr.renderer.CreateTextureFromSurface(iconSurface)
-				if err == nil && texture != nil {
-					defer texture.Destroy()
-					dstRect := &sdl.Rect{
-						X: WindowWidth - 60,
-						Y: int32(VisualizerHeight + 10),
-						W: iconSurface.W,
-						H: iconSurface.H,
-					}
-					sr.renderer.Copy(texture, nil, dstRect)
-				}
-			}
+			sr.renderer.Copy(texture, nil, dstRect)
 		}
 	}
+
+	// Render playback state icon
+	iconSurface, err := sr.iconFont.RenderUTF8Solid(stateIcon, sdl.Color{R: 255, G: 255, B: 255, A: 255})
+	if err == nil && iconSurface != nil {
+		defer iconSurface.Free()
+		texture, err := sr.renderer.CreateTextureFromSurface(iconSurface)
+		if err == nil && texture != nil {
+			defer texture.Destroy()
+			dstRect := &sdl.Rect{
+				X: WindowWidth - 60,
+				Y: int32(VisualizerHeight + 10),
+				W: iconSurface.W,
+				H: iconSurface.H,
+			}
+			sr.renderer.Copy(texture, nil, dstRect)
+		}
+	}
+
 }
 
 // drawSongInfoOverlay draws the song information overlay
 func (sr *SDLRenderer) drawSongInfoOverlay() {
 	sr.displayMu.Lock()
 	song := sr.songInfo
+	expiry := sr.songInfoExpiry
 	sr.displayMu.Unlock()
 
-	if song.Title == "" {
+	now := time.Now()
+	if song.Title == "" || expiry.IsZero() || now.After(expiry) {
 		return
 	}
 
-	if sr.fontBig == nil || sr.font == nil {
+	if sr.largeFont == nil || sr.defaultFont == nil {
 		return
 	}
 
@@ -515,7 +540,7 @@ func (sr *SDLRenderer) drawSongInfoOverlay() {
 
 	// Artist
 	if song.Artist != "" {
-		surface, err := sr.font.RenderUTF8Solid(song.Artist, color)
+		surface, err := sr.defaultFont.RenderUTF8Blended(song.Artist, color)
 		if err == nil && surface != nil {
 			defer surface.Free()
 			texture, err := sr.renderer.CreateTextureFromSurface(surface)
@@ -529,7 +554,7 @@ func (sr *SDLRenderer) drawSongInfoOverlay() {
 
 	// Album
 	if song.Album != "" {
-		surface, err := sr.font.RenderUTF8Solid(song.Album, color)
+		surface, err := sr.defaultFont.RenderUTF8Blended(song.Album, color)
 		if err == nil && surface != nil {
 			defer surface.Free()
 			texture, err := sr.renderer.CreateTextureFromSurface(surface)
@@ -543,7 +568,7 @@ func (sr *SDLRenderer) drawSongInfoOverlay() {
 
 	// Title
 	if titleText != "" {
-		surface, err := sr.fontBig.RenderUTF8Solid(titleText, color)
+		surface, err := sr.largeFont.RenderUTF8Blended(titleText, color)
 		if err == nil && surface != nil {
 			defer surface.Free()
 			texture, err := sr.renderer.CreateTextureFromSurface(surface)

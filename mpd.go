@@ -134,24 +134,14 @@ func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPre
 
 					// Song changed
 					if file != lastFile {
-						displaySongInfo(SongInfoRequest{
-							Artist: song["Artist"],
-							Album:  song["Album"],
-							Title:  title,
-							Track:  song["Track"],
-						})
+						ShowSongInfo(song["Artist"], song["Album"], title, song["Track"])
 						lastFile = file
 						lastTitle = title
 					}
 
 					// Title changed (covers streams)
 					if title != "" && title != lastTitle {
-						displaySongInfo(SongInfoRequest{
-							Artist: song["Artist"],
-							Album:  song["Album"],
-							Title:  title,
-							Track:  song["Track"],
-						})
+						ShowSongInfo(song["Artist"], song["Album"], title, song["Track"])
 						lastTitle = title
 					}
 

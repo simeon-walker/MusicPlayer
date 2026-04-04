@@ -73,8 +73,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	startSongInfoDisplay()
-
 	// Start MQTT
 	mqttClient := startMQTT(events, *mqttServer, *mqttPrefix, *mqttUser, *mqttPass)
 

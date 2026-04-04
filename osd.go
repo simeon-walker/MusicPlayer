@@ -10,14 +10,6 @@ func showPlaybackIcon(state string) {
 	UpdatePlayState(state)
 }
 
-func showSongInfo(artist, album, title, track string) {
-	if title == "" {
-		return
-	}
-	// Use SDL rendering
-	ShowSongInfo(artist, album, title, track)
-}
-
 func startProgressUpdater(safeClient *SafeMPDClient, stop <-chan struct{}) {
 	go func() {
 		ticker := time.NewTicker(1 * time.Second)

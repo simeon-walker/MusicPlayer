@@ -74,12 +74,7 @@ func eventDispatcher(safeClient *SafeMPDClient, events <-chan ControlEvent) {
 					logger.Error("Failed to fetch current song", slog.Any("err", err))
 					continue
 				}
-				displaySongInfo(SongInfoRequest{
-					Artist: song["Artist"],
-					Album:  song["Album"],
-					Title:  song["Title"],
-					Track:  song["Track"],
-				})
+				ShowSongInfo(song["Artist"], song["Album"], song["Title"], song["Track"])
 
 			case "poweroff":
 				logger.Warn("Powering off system...")
@@ -90,6 +85,10 @@ func eventDispatcher(safeClient *SafeMPDClient, events <-chan ControlEvent) {
 
 			default:
 				logger.Warn("Unknown action", slog.Any("action", ev.Action))
+			}
+
+			if ev.Source == "input" {
+				RefreshSongInfo()
 			}
 		case <-renderTicker.C:
 			// Pump SDL events and render in the main thread
