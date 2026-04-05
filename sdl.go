@@ -15,7 +15,7 @@ import (
 const (
 	WindowWidth       = 800
 	WindowHeight      = 480
-	ProgressBarHeight = 50
+	ProgressBarHeight = 40
 	VisualizerHeight  = WindowHeight - ProgressBarHeight
 
 	// Font paths - adjust for small displays like Raspberry Pi touchscreen
@@ -29,15 +29,15 @@ const (
 )
 
 var (
-	ColorBackground       = sdl.Color{R: 0, G: 0, B: 0, A: 255}
-	ColorVisualizerEmpty  = sdl.Color{R: 20, G: 80, B: 120, A: 255}
-	ColorVisualizerLine   = sdl.Color{R: 255, G: 255, B: 255, A: 255}
-	ColorVisualizerCross  = sdl.Color{R: 255, G: 255, B: 0, A: 255}
-	ColorVisualizerGrid   = sdl.Color{R: 30, G: 50, B: 50, A: 128}
+	ColorBackground      = sdl.Color{R: 0, G: 0, B: 0, A: 255}
+	ColorVisualizerEmpty = sdl.Color{R: 20, G: 80, B: 120, A: 255}
+	ColorVisualizerLine  = sdl.Color{R: 255, G: 255, B: 255, A: 255}
+	ColorVisualizerCross = sdl.Color{R: 255, G: 255, B: 0, A: 255}
+	ColorVisualizerGrid  = sdl.Color{R: 30, G: 50, B: 50, A: 128}
 	ColorZeroBar         = sdl.Color{R: 32, G: 100, B: 100, A: 100}
 	ColorProgressBg      = sdl.Color{R: 20, G: 40, B: 40, A: 255}
 	ColorProgressBorder  = sdl.Color{R: 32, G: 200, B: 191, A: 255}
-	ColorProgressFill    = sdl.Color{R: 32, G: 200, B: 191, A: 200}
+	ColorProgressFill    = sdl.Color{R: 25, G: 158, B: 151, A: 200}
 	ColorTimeText        = sdl.Color{R: 255, G: 255, B: 255, A: 255}
 	ColorSongInfoBg      = sdl.Color{R: 0, G: 0, B: 0, A: 180}
 	ColorSongInfoText    = sdl.Color{R: 32, G: 200, B: 191, A: 255}
@@ -105,6 +105,9 @@ func InitSDL(rotateScreen bool) error {
 		return fmt.Errorf("SDL init failed: %v", err)
 	}
 	logger.Debug("SDL video subsystem initialized")
+
+	// Hide the cursor
+	sdl.ShowCursor(sdl.DISABLE)
 
 	// Initialize TTF
 	if err := ttf.Init(); err != nil {
@@ -432,13 +435,14 @@ func (sr *SDLRenderer) drawVisualizer() {
 		return
 	}
 
-	barWidth := WindowWidth / numBars
-	logger.Debug("Drawing visualizer", "bars", numBars, "bar_width", barWidth)
+	barWidthFloat := float64(WindowWidth) / float64(numBars)
+	barGap := 4 // larger gap between bars
+	logger.Debug("Drawing visualizer", "bars", numBars, "bar_width_float", barWidthFloat, "bar_gap", barGap)
 
 	// Always draw grid/baseline even if all bars are zero
 	sr.renderer.SetDrawColor(ColorVisualizerGrid.R, ColorVisualizerGrid.G, ColorVisualizerGrid.B, ColorVisualizerGrid.A)
-	for i := 0; i < numBars; i++ {
-		x := int32(i * barWidth)
+	for i := 0; i <= numBars; i++ {
+		x := int32(float64(i) * barWidthFloat)
 		sr.renderer.DrawLine(x, int32(VisualizerHeight)-2, x, int32(VisualizerHeight)+2)
 	}
 
@@ -460,9 +464,13 @@ func (sr *SDLRenderer) drawVisualizer() {
 		}
 
 		// Position: bottom-aligned in visualizer area
-		x := int32(i * barWidth)
+		x := int32(float64(i) * barWidthFloat)
+		nextX := int32(float64(i+1) * barWidthFloat)
+		w := nextX - x - int32(barGap)
+		if w < 1 {
+			w = 1
+		}
 		y := int32(VisualizerHeight - scaledHeight)
-		w := int32(barWidth - 1) // Small gap between bars
 		barH := int32(scaledHeight)
 
 		if barH > 0 {
@@ -542,7 +550,7 @@ func (sr *SDLRenderer) drawProgressBar() {
 			defer texture.Destroy()
 			dstRect := &sdl.Rect{
 				X: 10,
-				Y: int32(VisualizerHeight + 15),
+				Y: int32(VisualizerHeight + 10),
 				W: textSurface.W,
 				H: textSurface.H,
 			}
@@ -558,8 +566,8 @@ func (sr *SDLRenderer) drawProgressBar() {
 		if err == nil && texture != nil {
 			defer texture.Destroy()
 			dstRect := &sdl.Rect{
-				X: WindowWidth - 60,
-				Y: int32(VisualizerHeight + 10),
+				X: WindowWidth - 40,
+				Y: int32(VisualizerHeight + 3),
 				W: iconSurface.W,
 				H: iconSurface.H,
 			}
