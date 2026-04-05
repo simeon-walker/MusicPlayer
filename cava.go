@@ -18,7 +18,7 @@ func startCava(configPath string) {
 	cavaMu.Lock()
 	if cavaProcess != nil {
 		cavaMu.Unlock()
-		logger.Info("CAVA supervisor already running")
+		logger.Info("Cava supervisor already running")
 		return
 	}
 	cavaMu.Unlock()
@@ -40,14 +40,14 @@ func startCava(configPath string) {
 			// Get stdout pipe to read bar data
 			stdout, err := cmd.StdoutPipe()
 			if err != nil {
-				logger.Error("Failed to get CAVA stdout", "err", err)
+				logger.Error("Failed to get Cava stdout", "err", err)
 				time.Sleep(5 * time.Second)
 				continue
 			}
 
 			err = cmd.Start()
 			if err != nil {
-				logger.Error("Failed to start CAVA", "err", err)
+				logger.Error("Failed to start Cava", "err", err)
 				time.Sleep(5 * time.Second)
 				continue
 			}
@@ -55,21 +55,21 @@ func startCava(configPath string) {
 			cavaMu.Lock()
 			cavaProcess = cmd
 			cavaMu.Unlock()
-			logger.Info("Started CAVA", "pid", cmd.Process.Pid)
+			logger.Info("Started Cava", "pid", cmd.Process.Pid)
 
 			// Read bar data from Cava output
 			scanner := bufio.NewScanner(stdout)
 			for scanner.Scan() {
 				line := scanner.Text()
 				if line != "" {
-					logger.Debug("CAVA output", "line", line[:min(80, len(line))])
+					logger.Debug("Cava output", "line", line[:min(80, len(line))])
 					// Pass bar heights to SDL renderer
 					UpdateVisualizerBars(line)
 				}
 			}
 
 			if err := scanner.Err(); err != nil {
-				logger.Warn("CAVA read error", "err", err)
+				logger.Warn("Cava read error", "err", err)
 			}
 
 			err = cmd.Wait()
@@ -80,15 +80,15 @@ func startCava(configPath string) {
 			cavaMu.Unlock()
 
 			if shouldStop {
-				logger.Info("CAVA stopped")
+				logger.Info("Cava stopped")
 				return
 			}
 
 			if err != nil {
-				logger.Warn("CAVA exited", "err", err)
+				logger.Warn("Cava exited", "err", err)
 			}
 
-			logger.Info("Restarting CAVA in 3s")
+			logger.Info("Restarting Cava in 3s")
 			time.Sleep(3 * time.Second)
 		}
 	}()
@@ -103,10 +103,10 @@ func stopCava() {
 	if proc == nil || proc.Process == nil {
 		return
 	}
-	logger.Info("Stopping CAVA")
+	logger.Info("Stopping Cava")
 
 	err := proc.Process.Signal(syscall.SIGTERM)
 	if err != nil {
-		logger.Warn("Failed to signal CAVA", "err", err)
+		logger.Warn("Failed to signal Cava", "err", err)
 	}
 }

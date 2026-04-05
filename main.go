@@ -65,7 +65,7 @@ func main() {
 	mqttUser := flag.String("mqtt-user", mqttUserEnv, "MQTT username")
 	mqttPass := flag.String("mqtt-pass", mqttPassEnv, "MQTT password")
 	inputDevice := flag.String("input", inputDeviceEnv, "Input device path (FLIRC)")
-	cavaConfig := flag.String("cava-config", cavaConfigEnv, "Path to CAVA configuration file")
+	cavaConfig := flag.String("cava-config", cavaConfigEnv, "Path to Cava configuration file")
 	rotateScreen := flag.Bool("rotate-screen", rotateScreenDefault, "Rotate the SDL display 180 degrees")
 	debug := flag.Bool("debug", false, "Enable debug logging")
 	flag.Parse()
@@ -95,7 +95,7 @@ func main() {
 	// Starts evdev input handler
 	startEvDevHandler(*inputDevice, events, stopChan)
 
-	// Start CAVA visualizer
+	// Start Cava visualizer
 	startCava(*cavaConfig)
 
 	// Start MPD-MQTT status publisher
