@@ -1,0 +1,15 @@
+[Unit]
+Description=Music Player Controller
+Wants=mpd.service
+After=mpd.service network.target
+
+[Service]
+Type=simple
+ExecStart=/home/sim/bin/mpd-controller
+Restart=always
+RestartSec=5
+Environment=SDL_VIDEODRIVER=kmsdrm
+Environment=HOME=%h
+
+[Install]
+WantedBy=default.target
