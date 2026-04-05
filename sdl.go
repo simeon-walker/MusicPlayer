@@ -28,6 +28,22 @@ const (
 	SongInfoDisplayDuration = 5 * time.Second
 )
 
+var (
+	ColorBackground       = sdl.Color{R: 0, G: 0, B: 0, A: 255}
+	ColorVisualizerEmpty  = sdl.Color{R: 20, G: 80, B: 120, A: 255}
+	ColorVisualizerLine   = sdl.Color{R: 255, G: 255, B: 255, A: 255}
+	ColorVisualizerCross  = sdl.Color{R: 255, G: 255, B: 0, A: 255}
+	ColorVisualizerGrid   = sdl.Color{R: 30, G: 50, B: 50, A: 128}
+	ColorZeroBar         = sdl.Color{R: 32, G: 100, B: 100, A: 100}
+	ColorProgressBg      = sdl.Color{R: 20, G: 40, B: 40, A: 255}
+	ColorProgressBorder  = sdl.Color{R: 32, G: 200, B: 191, A: 255}
+	ColorProgressFill    = sdl.Color{R: 32, G: 200, B: 191, A: 200}
+	ColorTimeText        = sdl.Color{R: 255, G: 255, B: 255, A: 255}
+	ColorSongInfoBg      = sdl.Color{R: 0, G: 0, B: 0, A: 180}
+	ColorSongInfoText    = sdl.Color{R: 32, G: 200, B: 191, A: 255}
+	ColorTestText        = sdl.Color{R: 32, G: 196, B: 191, A: 255}
+)
+
 type SDLRenderer struct {
 	window      *sdl.Window
 	renderer    *sdl.Renderer
@@ -133,7 +149,7 @@ func InitSDL(rotateScreen bool) error {
 	}
 
 	renderer.SetDrawBlendMode(sdl.BLENDMODE_BLEND)
-	renderer.SetDrawColor(0, 0, 0, 255)
+	renderer.SetDrawColor(ColorBackground.R, ColorBackground.G, ColorBackground.B, ColorBackground.A)
 	renderer.Clear()
 	renderer.Present()
 
@@ -366,7 +382,7 @@ func (sr *SDLRenderer) render() {
 		if err := sr.renderer.SetRenderTarget(nil); err != nil {
 			logger.Warn("Failed to reset SDL render target", "err", err)
 		}
-		sr.renderer.SetDrawColor(0, 0, 0, 255)
+		sr.renderer.SetDrawColor(ColorBackground.R, ColorBackground.G, ColorBackground.B, ColorBackground.A)
 		sr.renderer.Clear()
 		center := &sdl.Point{X: WindowWidth / 2, Y: WindowHeight / 2}
 		dstRect := &sdl.Rect{X: 0, Y: 0, W: WindowWidth, H: WindowHeight}
@@ -388,20 +404,31 @@ func (sr *SDLRenderer) drawVisualizer() {
 	sr.barMu.Unlock()
 
 	if numBars == 0 {
-		// Draw a bright test pattern so the app is clearly visible when no data has arrived.
-		sr.renderer.SetDrawColor(20, 80, 120, 255)
+		// Draw a dark background so the app is clearly visible when no data has arrived.
+		sr.renderer.SetDrawColor(ColorVisualizerEmpty.R, ColorVisualizerEmpty.G, ColorVisualizerEmpty.B, ColorVisualizerEmpty.A)
 		sr.renderer.FillRect(&sdl.Rect{X: 0, Y: 0, W: WindowWidth, H: VisualizerHeight})
 
-		sr.renderer.SetDrawColor(255, 255, 255, 255)
-		sr.renderer.DrawLine(0, 0, WindowWidth, VisualizerHeight)
-		sr.renderer.DrawLine(0, VisualizerHeight, WindowWidth, 0)
+		if sr.defaultFont != nil {
+			text := "Music Player"
+			color := ColorTestText
+			surface, err := sr.defaultFont.RenderUTF8Blended(text, color)
+			if err == nil && surface != nil {
+				defer surface.Free()
+				texture, err := sr.renderer.CreateTextureFromSurface(surface)
+				if err == nil && texture != nil {
+					defer texture.Destroy()
+					dst := &sdl.Rect{
+						X: WindowWidth/2 - surface.W/2,
+						Y: VisualizerHeight/2 - surface.H/2,
+						W: surface.W,
+						H: surface.H,
+					}
+					sr.renderer.Copy(texture, nil, dst)
+				}
+			}
+		}
 
-		// Draw center crosshairs
-		sr.renderer.SetDrawColor(255, 255, 0, 255)
-		sr.renderer.DrawLine(WindowWidth/2, 0, WindowWidth/2, VisualizerHeight)
-		sr.renderer.DrawLine(0, VisualizerHeight/2, WindowWidth, VisualizerHeight/2)
-
-		logger.Debug("Rendering test pattern - no bar data yet")
+		logger.Debug("Rendering Music Player test text - no bar data yet")
 		return
 	}
 
@@ -409,7 +436,7 @@ func (sr *SDLRenderer) drawVisualizer() {
 	logger.Debug("Drawing visualizer", "bars", numBars, "bar_width", barWidth)
 
 	// Always draw grid/baseline even if all bars are zero
-	sr.renderer.SetDrawColor(30, 50, 50, 128)
+	sr.renderer.SetDrawColor(ColorVisualizerGrid.R, ColorVisualizerGrid.G, ColorVisualizerGrid.B, ColorVisualizerGrid.A)
 	for i := 0; i < numBars; i++ {
 		x := int32(i * barWidth)
 		sr.renderer.DrawLine(x, int32(VisualizerHeight)-2, x, int32(VisualizerHeight)+2)
@@ -456,7 +483,7 @@ func (sr *SDLRenderer) drawVisualizer() {
 			sr.renderer.DrawRect(&sdl.Rect{X: x, Y: y, W: w, H: barH})
 		} else {
 			// Draw a very thin baseline for zero bars
-			sr.renderer.SetDrawColor(32, 100, 100, 100)
+			sr.renderer.SetDrawColor(ColorZeroBar.R, ColorZeroBar.G, ColorZeroBar.B, ColorZeroBar.A)
 			sr.renderer.FillRect(&sdl.Rect{X: x, Y: int32(VisualizerHeight) - 1, W: w, H: 1})
 		}
 	}
@@ -471,7 +498,7 @@ func (sr *SDLRenderer) drawProgressBar() {
 	sr.displayMu.Unlock()
 
 	// Draw background bar (dark teal)
-	sr.renderer.SetDrawColor(20, 40, 40, 255)
+	sr.renderer.SetDrawColor(ColorProgressBg.R, ColorProgressBg.G, ColorProgressBg.B, ColorProgressBg.A)
 	sr.renderer.FillRect(&sdl.Rect{
 		X: 0,
 		Y: int32(VisualizerHeight),
@@ -480,7 +507,7 @@ func (sr *SDLRenderer) drawProgressBar() {
 	})
 
 	// Draw border/separator line
-	sr.renderer.SetDrawColor(32, 200, 191, 255)
+	sr.renderer.SetDrawColor(ColorProgressBorder.R, ColorProgressBorder.G, ColorProgressBorder.B, ColorProgressBorder.A)
 	sr.renderer.DrawLine(0, int32(VisualizerHeight), WindowWidth, int32(VisualizerHeight))
 
 	// Draw progress indicator
@@ -492,7 +519,7 @@ func (sr *SDLRenderer) drawProgressBar() {
 
 		progressWidth := int32(float64(WindowWidth) * progress)
 		if progressWidth > 0 {
-			sr.renderer.SetDrawColor(32, 200, 191, 200)
+			sr.renderer.SetDrawColor(ColorProgressFill.R, ColorProgressFill.G, ColorProgressFill.B, ColorProgressFill.A)
 			sr.renderer.FillRect(&sdl.Rect{
 				X: 0,
 				Y: int32(VisualizerHeight),
@@ -507,7 +534,7 @@ func (sr *SDLRenderer) drawProgressBar() {
 	stateIcon := getPlayStateIcon(playState)
 
 	// Render time text
-	textSurface, err := sr.defaultFont.RenderUTF8Blended(timeStr, sdl.Color{R: 255, G: 255, B: 255, A: 255})
+	textSurface, err := sr.defaultFont.RenderUTF8Blended(timeStr, ColorTimeText)
 	if err == nil && textSurface != nil {
 		defer textSurface.Free()
 		texture, err := sr.renderer.CreateTextureFromSurface(textSurface)
@@ -524,7 +551,7 @@ func (sr *SDLRenderer) drawProgressBar() {
 	}
 
 	// Render playback state icon
-	iconSurface, err := sr.iconFont.RenderUTF8Solid(stateIcon, sdl.Color{R: 255, G: 255, B: 255, A: 255})
+	iconSurface, err := sr.iconFont.RenderUTF8Solid(stateIcon, ColorTimeText)
 	if err == nil && iconSurface != nil {
 		defer iconSurface.Free()
 		texture, err := sr.renderer.CreateTextureFromSurface(iconSurface)
@@ -559,7 +586,7 @@ func (sr *SDLRenderer) drawSongInfoOverlay() {
 	}
 
 	// Semi-transparent background
-	sr.renderer.SetDrawColor(0, 0, 0, 180)
+	sr.renderer.SetDrawColor(ColorSongInfoBg.R, ColorSongInfoBg.G, ColorSongInfoBg.B, ColorSongInfoBg.A)
 	sr.renderer.FillRect(&sdl.Rect{
 		X: 0,
 		Y: 20,
@@ -574,7 +601,7 @@ func (sr *SDLRenderer) drawSongInfoOverlay() {
 	}
 
 	y := int32(30)
-	color := sdl.Color{R: 32, G: 200, B: 191, A: 255}
+	color := ColorSongInfoText
 
 	// Artist
 	if song.Artist != "" {
