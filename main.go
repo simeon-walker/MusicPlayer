@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/joho/godotenv"
@@ -45,6 +46,17 @@ func main() {
 	if !found {
 		inputDeviceEnv = "/dev/input/eventX"
 	}
+	cavaConfigEnv, found := os.LookupEnv("CAVA_CONFIG")
+	if !found {
+		cavaConfigEnv = os.ExpandEnv("$HOME/.config/cava/config")
+	}
+	rotateScreenEnv, found := os.LookupEnv("ROTATE_SCREEN")
+	rotateScreenDefault := false
+	if found {
+		if v, err := strconv.ParseBool(rotateScreenEnv); err == nil {
+			rotateScreenDefault = v
+		}
+	}
 
 	// ---- Command-line flags ----
 	mpdServer := flag.String("mpd", mpdServerEnv, "MPD server address (host:port)")
@@ -53,6 +65,8 @@ func main() {
 	mqttUser := flag.String("mqtt-user", mqttUserEnv, "MQTT username")
 	mqttPass := flag.String("mqtt-pass", mqttPassEnv, "MQTT password")
 	inputDevice := flag.String("input", inputDeviceEnv, "Input device path (FLIRC)")
+	cavaConfig := flag.String("cava-config", cavaConfigEnv, "Path to CAVA configuration file")
+	rotateScreen := flag.Bool("rotate-screen", rotateScreenDefault, "Rotate the SDL display 180 degrees")
 	debug := flag.Bool("debug", false, "Enable debug logging")
 	flag.Parse()
 
@@ -68,7 +82,7 @@ func main() {
 	logger.Info("MPD server configured", slog.Any("server", *mpdServer))
 
 	// Initialize SDL for visualization
-	if err := InitSDL(); err != nil {
+	if err := InitSDL(*rotateScreen); err != nil {
 		logger.Error("SDL initialization failed", "err", err)
 		os.Exit(1)
 	}
@@ -82,7 +96,7 @@ func main() {
 	startEvDevHandler(*inputDevice, events, stopChan)
 
 	// Start CAVA visualizer
-	startCava()
+	startCava(*cavaConfig)
 
 	// Start MPD-MQTT status publisher
 	mpdStatusWatcher(safeClient, mqttClient, *mqttPrefix, stopChan)

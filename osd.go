@@ -12,7 +12,7 @@ func showPlaybackIcon(state string) {
 
 func startProgressUpdater(safeClient *SafeMPDClient, stop <-chan struct{}) {
 	go func() {
-		ticker := time.NewTicker(1 * time.Second)
+		ticker := time.NewTicker(100 * time.Millisecond) // Update progress 10 times per second for smoother display
 		defer ticker.Stop()
 
 		for {

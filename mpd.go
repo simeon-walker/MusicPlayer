@@ -26,8 +26,17 @@ func (s *SafeMPDClient) Get() *mpd.Client {
 	defer s.mu.Unlock()
 
 	if s.client != nil {
-		return s.client
+		// Check if connection is still alive
+		if err := s.client.Ping(); err != nil {
+			logger.Warn("MPD connection lost, reconnecting", "err", err)
+			s.client.Close()
+			s.client = nil
+		} else {
+			return s.client
+		}
 	}
+
+	// Connect or reconnect
 	c, err := mpd.Dial("tcp", s.addr)
 	if err != nil {
 		logger.Error("MPD connect failed", slog.Any("err", err))

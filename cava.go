@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"os"
 	"os/exec"
 	"sync"
 	"syscall"
@@ -15,7 +14,7 @@ var (
 	cavaMu            sync.Mutex
 )
 
-func startCava() {
+func startCava(configPath string) {
 	cavaMu.Lock()
 	if cavaProcess != nil {
 		cavaMu.Unlock()
@@ -33,10 +32,11 @@ func startCava() {
 			}
 			cavaMu.Unlock()
 
+			logger.Info("Starting Cava", "config", configPath)
 			// Run Cava directly (not in rxvt)
 			// It will output bar heights as comma-separated numbers
-			cmd := exec.Command("cava", "-p", os.ExpandEnv("$HOME/.config/cava/config"))
-			
+			cmd := exec.Command("cava", "-p", configPath)
+
 			// Get stdout pipe to read bar data
 			stdout, err := cmd.StdoutPipe()
 			if err != nil {

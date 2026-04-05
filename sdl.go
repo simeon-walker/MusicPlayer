@@ -31,9 +31,11 @@ const (
 type SDLRenderer struct {
 	window      *sdl.Window
 	renderer    *sdl.Renderer
+	target      *sdl.Texture
 	defaultFont *ttf.Font
 	largeFont   *ttf.Font
 	iconFont    *ttf.Font
+	rotate      bool
 
 	// Visualizer data
 	barHeights []int
@@ -65,7 +67,7 @@ var (
 )
 
 // InitSDL initializes SDL and creates the window
-func InitSDL() error {
+func InitSDL(rotateScreen bool) error {
 	sdlMu.Lock()
 	defer sdlMu.Unlock()
 
@@ -135,6 +137,18 @@ func InitSDL() error {
 	renderer.Clear()
 	renderer.Present()
 
+	var target *sdl.Texture
+	if rotateScreen {
+		target, err = renderer.CreateTexture(sdl.PIXELFORMAT_ABGR8888, sdl.TEXTUREACCESS_TARGET, WindowWidth, WindowHeight)
+		if err != nil {
+			renderer.Destroy()
+			window.Destroy()
+			ttf.Quit()
+			sdl.Quit()
+			return fmt.Errorf("failed to create render target: %v", err)
+		}
+	}
+
 	// Load fonts
 	defaultFontPath := DefaultFontPath
 	defaultfont, err := ttf.OpenFont(defaultFontPath, DefaultFontSize)
@@ -161,9 +175,11 @@ func InitSDL() error {
 	sdlRenderer = &SDLRenderer{
 		window:      window,
 		renderer:    renderer,
+		target:      target,
 		defaultFont: defaultfont,
 		largeFont:   largeFont,
 		iconFont:    iconFont,
+		rotate:      rotateScreen,
 		barHeights:  make([]int, 0),
 		playState:   "stop",
 	}
@@ -189,6 +205,9 @@ func ShutdownSDL() {
 	}
 	if sdlRenderer.defaultFont != nil {
 		sdlRenderer.defaultFont.Close()
+	}
+	if sdlRenderer.target != nil {
+		sdlRenderer.target.Destroy()
 	}
 	if sdlRenderer.renderer != nil {
 		sdlRenderer.renderer.Destroy()
@@ -328,6 +347,12 @@ func (sr *SDLRenderer) render() {
 		return
 	}
 
+	if sr.rotate && sr.target != nil {
+		if err := sr.renderer.SetRenderTarget(sr.target); err != nil {
+			logger.Warn("Failed to set SDL render target", "err", err)
+		}
+	}
+
 	// Clear background
 	sr.renderer.SetDrawColor(0, 0, 0, 255)
 	sr.renderer.Clear()
@@ -336,6 +361,19 @@ func (sr *SDLRenderer) render() {
 	sr.drawVisualizer()
 	sr.drawProgressBar()
 	sr.drawSongInfoOverlay()
+
+	if sr.rotate && sr.target != nil {
+		if err := sr.renderer.SetRenderTarget(nil); err != nil {
+			logger.Warn("Failed to reset SDL render target", "err", err)
+		}
+		sr.renderer.SetDrawColor(0, 0, 0, 255)
+		sr.renderer.Clear()
+		center := &sdl.Point{X: WindowWidth / 2, Y: WindowHeight / 2}
+		dstRect := &sdl.Rect{X: 0, Y: 0, W: WindowWidth, H: WindowHeight}
+		if err := sr.renderer.CopyEx(sr.target, nil, dstRect, 180, center, sdl.FLIP_NONE); err != nil {
+			logger.Warn("Failed to copy rotated render target", "err", err)
+		}
+	}
 
 	// Finalize frame
 	sr.renderer.Present()
