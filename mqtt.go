@@ -78,16 +78,19 @@ func mqttControlHandler(events chan<- ControlEvent) mqtt.MessageHandler {
 }
 
 // Send an MQTT status message
-func sendMQTTStatus(mqttClient mqtt.Client, topic string, song mpd.Attrs, status mpd.Attrs) {
+func sendMQTTStatus(mqttClient mqtt.Client, topic string, song mpd.Attrs, status mpd.Attrs, playlistAdded, playlistRemoved int) {
 
 	// Build JSON payload
-	payload := map[string]string{
-		"state":  status["state"],
-		"time":   status["time"],
-		"title":  song["Title"],
-		"artist": song["Artist"],
-		"album":  song["Album"],
-		"file":   song["file"],
+	payload := map[string]interface{}{
+		"state":            status["state"],
+		"time":             status["time"],
+		"title":            song["Title"],
+		"artist":           song["Artist"],
+		"album":            song["Album"],
+		"file":             song["file"],
+		"playlist_length":  status["playlistlength"],
+		"playlist_added":   playlistAdded,
+		"playlist_removed": playlistRemoved,
 	}
 
 	data, err := json.Marshal(payload)

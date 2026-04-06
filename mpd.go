@@ -2,6 +2,7 @@ package main
 
 import (
 	"log/slog"
+	"strconv"
 	"sync"
 	"time"
 
@@ -68,6 +69,7 @@ func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPre
 		var lastState string
 		var lastTitle string
 		var lastFile string
+		lastPlaylistLength := -1
 
 		for {
 			select {
@@ -84,6 +86,22 @@ func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPre
 				continue
 			}
 			logger.Info("MPD watcher started")
+
+			// Capture a baseline queue length so the first playlist event can emit a delta.
+			if mpdClient := safeClient.Get(); mpdClient != nil {
+				if status, err := mpdClient.Status(); err != nil {
+					logger.Warn("Failed to read initial MPD status", slog.Any("err", err))
+				} else {
+					playlistLength, err := strconv.Atoi(status["playlistlength"])
+					if err != nil {
+						logger.Warn("Invalid initial playlistlength", "value", status["playlistlength"], slog.Any("err", err))
+					} else {
+						lastPlaylistLength = playlistLength
+						logger.Debug("Initialized playlist length baseline", "playlist_length", playlistLength)
+					}
+				}
+			}
+
 			ticker := time.NewTicker(45 * time.Second)
 
 		watcherLoop:
@@ -102,6 +120,8 @@ func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPre
 
 				case subsystem := <-w.Event:
 					logger.Info("Subsystem change", slog.Any("subsystem", subsystem))
+					playlistAdded := 0
+					playlistRemoved := 0
 
 					// Ensure main mpdClient is connected
 					mpdClient := safeClient.Get()
@@ -117,17 +137,36 @@ func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPre
 						continue
 					}
 
-				// Playback state change
-				state := status["state"]
-				if state != lastState {
-					logger.Info("Playback state changed", "last_state", lastState, "state", state)
-					showPlaybackIcon(state)
-					if state == "stop" {
-						// Clear progress bar on stop
-						UpdateProgress(0, 0)
+					if subsystem == "playlist" {
+						playlistLength, err := strconv.Atoi(status["playlistlength"])
+						if err != nil {
+							logger.Warn("Invalid playlistlength", "value", status["playlistlength"], slog.Any("err", err))
+						} else {
+							if lastPlaylistLength >= 0 && playlistLength != lastPlaylistLength {
+								delta := playlistLength - lastPlaylistLength
+								if delta > 0 {
+									playlistAdded = delta
+									logger.Info("Playlist items added", "count", delta, "playlist_length", playlistLength)
+								} else {
+									playlistRemoved = -delta
+									logger.Info("Playlist items removed", "count", -delta, "playlist_length", playlistLength)
+								}
+							}
+							lastPlaylistLength = playlistLength
+						}
 					}
-					lastState = state
-				}
+
+					// Playback state change
+					state := status["state"]
+					if state != lastState {
+						logger.Info("Playback state changed", "last_state", lastState, "state", state)
+						showPlaybackIcon(state)
+						if state == "stop" {
+							// Clear progress bar on stop
+							UpdateProgress(0, 0)
+						}
+						lastState = state
+					}
 
 					// Fetch current song
 
@@ -159,7 +198,7 @@ func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPre
 						logger.Info("Audio format", "audio", audio)
 					}
 
-					sendMQTTStatus(mqttClient, mqttPrefix+"/status", song, status)
+					sendMQTTStatus(mqttClient, mqttPrefix+"/status", song, status, playlistAdded, playlistRemoved)
 
 				case <-ticker.C:
 					// Periodic keepalive
