@@ -3,6 +3,7 @@ package main
 import (
 	"log/slog"
 	"os/exec"
+	"strconv"
 	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -44,8 +45,32 @@ func dispatchControlEvent(safeClient *SafeMPDClient, ev ControlEvent) {
 		}
 
 	case "prev":
-		if err := mpdClient.Previous(); err != nil {
-			logger.Error("Previous failed", slog.Any("err", err))
+		status, err := mpdClient.Status()
+		if err != nil {
+			logger.Warn("Status failed before prev, falling back to previous", slog.Any("err", err))
+			if err := mpdClient.Previous(); err != nil {
+				logger.Error("Previous failed", slog.Any("err", err))
+			}
+			break
+		}
+
+		elapsed, err := strconv.ParseFloat(status["elapsed"], 64)
+		if err != nil {
+			logger.Warn("Invalid elapsed time, falling back to previous", "elapsed", status["elapsed"], slog.Any("err", err))
+			if err := mpdClient.Previous(); err != nil {
+				logger.Error("Previous failed", slog.Any("err", err))
+			}
+			break
+		}
+
+		if elapsed > 10 {
+			if err := mpdClient.SeekCur(0, false); err != nil {
+				logger.Error("Seek to start failed", slog.Any("err", err))
+			}
+		} else {
+			if err := mpdClient.Previous(); err != nil {
+				logger.Error("Previous failed", slog.Any("err", err))
+			}
 		}
 
 	case "seek":
