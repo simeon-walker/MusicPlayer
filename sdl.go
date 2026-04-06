@@ -23,7 +23,7 @@ const (
 	IconFontPath    = "/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf" // Use a font with better symbols if needed
 
 	DefaultFontSize         = 20
-	LargeFontSize           = 24
+	LargeFontSize           = 40
 	IconFontSize            = 24
 	SongInfoDisplayDuration = 5 * time.Second
 )
@@ -37,7 +37,7 @@ var (
 	ColorZeroBar         = sdl.Color{R: 32, G: 100, B: 100, A: 100}
 	ColorProgressBg      = sdl.Color{R: 20, G: 40, B: 40, A: 255}
 	ColorProgressBorder  = sdl.Color{R: 32, G: 200, B: 191, A: 255}
-	ColorProgressFill    = sdl.Color{R: 25, G: 158, B: 151, A: 200}
+	ColorProgressFill    = sdl.Color{R: 19, G: 102, B: 98, A: 200}
 	ColorTimeText        = sdl.Color{R: 255, G: 255, B: 255, A: 255}
 	ColorSongInfoBg      = sdl.Color{R: 0, G: 0, B: 0, A: 180}
 	ColorSongInfoText    = sdl.Color{R: 32, G: 200, B: 191, A: 255}
@@ -589,7 +589,7 @@ func (sr *SDLRenderer) drawSongInfoOverlay() {
 		return
 	}
 
-	if sr.largeFont == nil || sr.defaultFont == nil {
+	if sr.largeFont == nil {
 		return
 	}
 
@@ -609,11 +609,15 @@ func (sr *SDLRenderer) drawSongInfoOverlay() {
 	}
 
 	y := int32(30)
+	lineStep := int32(sr.largeFont.LineSkip())
+	if lineStep <= 0 {
+		lineStep = 30
+	}
 	color := ColorSongInfoText
 
 	// Artist
 	if song.Artist != "" {
-		surface, err := sr.defaultFont.RenderUTF8Blended(song.Artist, color)
+		surface, err := sr.largeFont.RenderUTF8Blended(song.Artist, color)
 		if err == nil && surface != nil {
 			defer surface.Free()
 			texture, err := sr.renderer.CreateTextureFromSurface(surface)
@@ -622,12 +626,12 @@ func (sr *SDLRenderer) drawSongInfoOverlay() {
 				sr.renderer.Copy(texture, nil, &sdl.Rect{X: 20, Y: y, W: surface.W, H: surface.H})
 			}
 		}
-		y += 30
+		y += lineStep
 	}
 
 	// Album
 	if song.Album != "" {
-		surface, err := sr.defaultFont.RenderUTF8Blended(song.Album, color)
+		surface, err := sr.largeFont.RenderUTF8Blended(song.Album, color)
 		if err == nil && surface != nil {
 			defer surface.Free()
 			texture, err := sr.renderer.CreateTextureFromSurface(surface)
@@ -636,7 +640,7 @@ func (sr *SDLRenderer) drawSongInfoOverlay() {
 				sr.renderer.Copy(texture, nil, &sdl.Rect{X: 20, Y: y, W: surface.W, H: surface.H})
 			}
 		}
-		y += 30
+		y += lineStep
 	}
 
 	// Title

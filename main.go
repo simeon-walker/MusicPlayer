@@ -46,6 +46,13 @@ func main() {
 	if !found {
 		inputDeviceEnv = "/dev/input/eventX"
 	}
+	evdevInputEnv, found := os.LookupEnv("EVDEV_INPUT")
+	evdevInputDefault := false
+	if found {
+		if v, err := strconv.ParseBool(evdevInputEnv); err == nil {
+			evdevInputDefault = v
+		}
+	}
 	cavaConfigEnv, found := os.LookupEnv("CAVA_CONFIG")
 	if !found {
 		cavaConfigEnv = os.ExpandEnv("$HOME/.config/cava/config")
@@ -65,6 +72,7 @@ func main() {
 	mqttUser := flag.String("mqtt-user", mqttUserEnv, "MQTT username")
 	mqttPass := flag.String("mqtt-pass", mqttPassEnv, "MQTT password")
 	inputDevice := flag.String("input", inputDeviceEnv, "Input device path (FLIRC)")
+	evdevInput := flag.Bool("evdev-input", evdevInputDefault, "Enable Linux evdev input listener")
 	cavaConfig := flag.String("cava-config", cavaConfigEnv, "Path to Cava configuration file")
 	rotateScreen := flag.Bool("rotate-screen", rotateScreenDefault, "Rotate the SDL display 180 degrees")
 	debug := flag.Bool("debug", false, "Enable debug logging")
@@ -92,8 +100,12 @@ func main() {
 
 	stopChan := make(chan struct{})
 
-	// Starts evdev input handler
-	startEvDevHandler(*inputDevice, events, stopChan)
+	if *evdevInput {
+		logger.Info("Starting evdev input handler", slog.Any("device", *inputDevice))
+		startEvDevHandler(*inputDevice, events, stopChan)
+	} else {
+		logger.Info("Evdev input disabled; SDL keyboard input only")
+	}
 
 	// Start Cava visualizer
 	startCava(*cavaConfig)
