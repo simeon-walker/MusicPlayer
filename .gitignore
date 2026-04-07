@@ -4,3 +4,4 @@ hosts.ini
 ansible.cfg
 .env
 /mpd-controller*
+/musicplayer
