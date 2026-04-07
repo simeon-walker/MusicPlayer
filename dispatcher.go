@@ -88,6 +88,11 @@ func dispatchControlEvent(safeClient *SafeMPDClient, ev ControlEvent) {
 			sr.ShowSongInfo(song["Artist"], song["Album"], song["Title"], song["Track"])
 		}
 
+	case "clear-playlist":
+		if err := mpdClient.Clear(); err != nil {
+			logger.Error("Clear playlist failed", slog.Any("err", err))
+		}
+
 	case "poweroff":
 		// Pause before poweroff because state is saved.
 		if err := mpdClient.Pause(true); err != nil {
@@ -144,6 +149,9 @@ func mapSDLKeyToControlEvent(keyCode sdl.Keycode) (ControlEvent, bool) {
 
 	case sdl.K_i, sdl.K_F7:
 		return ControlEvent{Source: "sdl", Action: "info"}, true
+
+	case sdl.K_F5:
+		return ControlEvent{Source: "sdl", Action: "clear-playlist"}, true
 
 	case sdl.K_QUOTE, sdl.K_POWER:
 		return ControlEvent{Source: "sdl", Action: "poweroff"}, true

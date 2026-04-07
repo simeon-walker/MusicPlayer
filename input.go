@@ -73,6 +73,9 @@ func startEvDevHandler(devPath string, events chan<- ControlEvent, stopChan <-ch
 					case evdev.KEY_F7: // Info button on FLIRC
 						events <- ControlEvent{Source: "input", Action: "info"}
 
+					case evdev.KEY_F5:
+						events <- ControlEvent{Source: "input", Action: "clear-playlist"}
+
 					case evdev.KEY_POWER:
 						events <- ControlEvent{Source: "input", Action: "poweroff"}
 					}
