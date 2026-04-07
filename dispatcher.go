@@ -84,7 +84,9 @@ func dispatchControlEvent(safeClient *SafeMPDClient, ev ControlEvent) {
 			logger.Error("Failed to fetch current song", slog.Any("err", err))
 			return
 		}
-		ShowSongInfo(song["Artist"], song["Album"], song["Title"], song["Track"])
+		if sr := getSDLRenderer(); sr != nil {
+			sr.ShowSongInfo(song["Artist"], song["Album"], song["Title"], song["Track"])
+		}
 
 	case "poweroff":
 		// Pause before poweroff because state is saved.
@@ -102,7 +104,9 @@ func dispatchControlEvent(safeClient *SafeMPDClient, ev ControlEvent) {
 	}
 
 	if ev.Source == "input" || ev.Source == "sdl" {
-		RefreshSongInfo()
+		if sr := getSDLRenderer(); sr != nil {
+			sr.RefreshSongInfo()
+		}
 	}
 }
 

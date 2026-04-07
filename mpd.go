@@ -160,10 +160,12 @@ func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPre
 					state := status["state"]
 					if state != lastState {
 						logger.Info("Playback state changed", "last_state", lastState, "state", state)
-						showPlaybackIcon(state)
-						if state == "stop" {
-							// Clear progress bar on stop
-							UpdateProgress(0, 0)
+						if sr := getSDLRenderer(); sr != nil {
+							sr.UpdatePlayState(state)
+							if state == "stop" {
+								// Clear progress bar on stop
+								sr.UpdateProgress(0, 0)
+							}
 						}
 						lastState = state
 					}
@@ -182,14 +184,18 @@ func mpdStatusWatcher(safeClient *SafeMPDClient, mqttClient mqtt.Client, mqttPre
 
 					// Song changed
 					if file != lastFile {
-						ShowSongInfo(song["Artist"], song["Album"], title, song["Track"])
+						if sr := getSDLRenderer(); sr != nil {
+							sr.ShowSongInfo(song["Artist"], song["Album"], title, song["Track"])
+						}
 						lastFile = file
 						lastTitle = title
 					}
 
 					// Title changed (covers streams)
 					if title != "" && title != lastTitle {
-						ShowSongInfo(song["Artist"], song["Album"], title, song["Track"])
+						if sr := getSDLRenderer(); sr != nil {
+							sr.ShowSongInfo(song["Artist"], song["Album"], title, song["Track"])
+						}
 						lastTitle = title
 					}
 

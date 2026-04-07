@@ -5,11 +5,6 @@ import (
 	"time"
 )
 
-func showPlaybackIcon(state string) {
-	// Use SDL rendering
-	UpdatePlayState(state)
-}
-
 func startProgressUpdater(safeClient *SafeMPDClient, stop <-chan struct{}) {
 	go func() {
 		ticker := time.NewTicker(100 * time.Millisecond) // Update progress 10 times per second for smoother display
@@ -44,8 +39,10 @@ func startProgressUpdater(safeClient *SafeMPDClient, stop <-chan struct{}) {
 				if err1 != nil || err2 != nil {
 					continue
 				}
-				// Update SDL progress bar
-				UpdateProgress(elapsed, duration)
+				if sr := getSDLRenderer(); sr != nil {
+					// Update SDL progress bar
+					sr.UpdateProgress(elapsed, duration)
+				}
 			}
 		}
 	}()

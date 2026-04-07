@@ -82,6 +82,12 @@ var (
 	sdlMu       sync.Mutex
 )
 
+func getSDLRenderer() *SDLRenderer {
+	sdlMu.Lock()
+	defer sdlMu.Unlock()
+	return sdlRenderer
+}
+
 // InitSDL initializes SDL and creates the window
 func InitSDL(rotateScreen bool) error {
 	sdlMu.Lock()
@@ -242,12 +248,9 @@ func ShutdownSDL() {
 	logger.Info("SDL shutdown complete")
 }
 
-// UpdateVisualizerBars updates the bar heights from Cava
+// UpdateVisualizerBars updates the bar heights from Cava.
 // Input: semicolon-separated numbers like "10;20;15;25;30;..."
-func UpdateVisualizerBars(barData string) {
-	sdlMu.Lock()
-	sr := sdlRenderer
-	sdlMu.Unlock()
+func (sr *SDLRenderer) UpdateVisualizerBars(barData string) {
 	if sr == nil {
 		return
 	}
@@ -275,9 +278,9 @@ func UpdateVisualizerBars(barData string) {
 
 	logger.Debug("Updated bars", "count", len(heights), "first_bar", heights[0], "max_bar", max(heights))
 
-	sdlRenderer.barMu.Lock()
-	sdlRenderer.barHeights = heights
-	sdlRenderer.barMu.Unlock()
+	sr.barMu.Lock()
+	sr.barHeights = heights
+	sr.barMu.Unlock()
 }
 
 func max(heights []int) int {
@@ -293,11 +296,8 @@ func max(heights []int) int {
 	return m
 }
 
-// UpdateProgress updates the progress display
-func UpdateProgress(elapsed, duration float64) {
-	sdlMu.Lock()
-	sr := sdlRenderer
-	sdlMu.Unlock()
+// UpdateProgress updates the renderer progress display.
+func (sr *SDLRenderer) UpdateProgress(elapsed, duration float64) {
 	if sr == nil {
 		return
 	}
@@ -308,15 +308,9 @@ func UpdateProgress(elapsed, duration float64) {
 	sr.displayMu.Unlock()
 }
 
-// ShowSongInfo displays song information
-func ShowSongInfo(artist, album, title, track string) {
-	if title == "" {
-		return
-	}
-	sdlMu.Lock()
-	sr := sdlRenderer
-	sdlMu.Unlock()
-	if sr == nil {
+// ShowSongInfo sets and refreshes the temporary song information overlay.
+func (sr *SDLRenderer) ShowSongInfo(artist, album, title, track string) {
+	if sr == nil || title == "" {
 		return
 	}
 
@@ -331,10 +325,8 @@ func ShowSongInfo(artist, album, title, track string) {
 	sr.displayMu.Unlock()
 }
 
-func RefreshSongInfo() {
-	sdlMu.Lock()
-	sr := sdlRenderer
-	sdlMu.Unlock()
+// RefreshSongInfo extends the current song overlay timeout when title is present.
+func (sr *SDLRenderer) RefreshSongInfo() {
 	if sr == nil {
 		return
 	}
@@ -346,11 +338,8 @@ func RefreshSongInfo() {
 	sr.displayMu.Unlock()
 }
 
-// UpdatePlayState updates the playback state icon
-func UpdatePlayState(state string) {
-	sdlMu.Lock()
-	sr := sdlRenderer
-	sdlMu.Unlock()
+// UpdatePlayState updates the playback state icon.
+func (sr *SDLRenderer) UpdatePlayState(state string) {
 	if sr == nil {
 		return
 	}
