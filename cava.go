@@ -62,7 +62,7 @@ func startCava(configPath string) {
 			for scanner.Scan() {
 				line := scanner.Text()
 				if line != "" {
-					logger.Debug("Cava output", "line", line[:min(80, len(line))])
+					// logger.Debug("Cava output", "line", line[:min(80, len(line))])
 					if sr := getSDLRenderer(); sr != nil {
 						// Pass bar heights to SDL renderer
 						sr.UpdateVisualizerBars(line)

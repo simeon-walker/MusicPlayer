@@ -1,12 +1,6 @@
 - name: Setup visualizer
   hosts: mpd
   tasks:
-    - name: Copy bash aliases
-      ansible.builtin.copy:
-        src: files/bash_aliases
-        dest: "{{ ansible_env.HOME }}/.bash_aliases"
-        mode: "0644"
-
     - name: Ensure directories exist in ~/.config
       become: false
       ansible.builtin.file:
@@ -70,23 +64,11 @@
         dest: "{{ ansible_env.HOME }}/mpd-controller-arm64"
         mode: "0755"
 
-    - name: Copy xbindkeys configuration
-      ansible.builtin.copy:
-        src: files/xbindkeysrc
-        dest: "{{ ansible_env.HOME }}/.xbindkeysrc"
-        mode: "0644"
-
-    - name: Copy xinitrc for kiosk
-      ansible.builtin.copy:
-        src: files/xinitrc
-        dest: "{{ ansible_env.HOME }}/.xinitrc"
-        mode: "0644"
-
-    - name: Copy kiosk service file
+    - name: Copy mpd-controller service file
       become: true
       ansible.builtin.copy:
-        src: files/kiosk.service
-        dest: "/etc/systemd/system/kiosk.service"
+        src: files/mpd-controller.service
+        dest: "{{ ansible_env.HOME }}/.config/systemd/user/mpd-controller.service"
         mode: "0644"
 
     - name: Disable systemd service getty@tty1
@@ -95,13 +77,6 @@
         name: "getty@tty1"
         enabled: false
         state: stopped
-
-    - name: Enable and start kiosk service
-      become: true
-      ansible.builtin.systemd:
-        name: kiosk.service
-        enabled: true
-        state: started
 
     - name: Add fstab entry for /mnt/music
       become: true

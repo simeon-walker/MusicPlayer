@@ -276,7 +276,7 @@ func (sr *SDLRenderer) UpdateVisualizerBars(barData string) {
 		return
 	}
 
-	logger.Debug("Updated bars", "count", len(heights), "first_bar", heights[0], "max_bar", max(heights))
+	// logger.Debug("Updated bars", "count", len(heights), "first_bar", heights[0], "max_bar", max(heights))
 
 	sr.barMu.Lock()
 	sr.barHeights = heights
@@ -426,7 +426,6 @@ func (sr *SDLRenderer) drawVisualizer() {
 
 	barWidthFloat := float64(WindowWidth) / float64(numBars)
 	barGap := 4 // larger gap between bars
-	logger.Debug("Drawing visualizer", "bars", numBars, "bar_width_float", barWidthFloat, "bar_gap", barGap)
 
 	// Always draw grid/baseline even if all bars are zero
 	sr.renderer.SetDrawColor(ColorVisualizerGrid.R, ColorVisualizerGrid.G, ColorVisualizerGrid.B, ColorVisualizerGrid.A)
